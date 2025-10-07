@@ -3,9 +3,9 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-COPY backend/package*.json ./backend/
-COPY frontend/package*.json ./frontend/
+COPY package*.json package-lock.json* ./
+COPY backend/package*.json backend/package-lock.json* ./backend/
+COPY frontend/package*.json frontend/package-lock.json* ./frontend/
 
 # Install dependencies
 RUN npm ci --only=production
