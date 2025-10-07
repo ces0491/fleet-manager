@@ -1,10 +1,12 @@
 services:
   - type: web
     name: fleet-manager
-    runtime: docker
+    runtime: node
     repo: https://github.com/ces0491/fleet-manager
     region: oregon
     plan: free
+    buildCommand: cd backend && npm install && npm run build && cd ../frontend && npm install && npm run build
+    startCommand: cd backend && node dist/server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
