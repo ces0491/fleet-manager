@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: fleet-manager
+    runtime: docker
+    repo: https://github.com/ces0491/fleet-manager
+    region: oregon
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        fromDatabase:
+          name: fleet-db
+          property: connectionString
+
+databases:
+  - name: fleet-db
+    plan: free
+    region: oregon
+    databaseName: fleet
+    user: fleetuser

@@ -1,0 +1,166 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Download, Plus, Calendar } from 'lucide-react';
+import axios from 'axios';
+import { startOfWeek, endOfWeek } from 'date-fns';
+import DashboardStats from './DashboardStats';
+import FleetTable from './FleetTable';
+import { Vehicle, WeeklyData, DashboardStats as DashboardStatsType } from '../../types';
+import toast from 'react-hot-toast';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export default function Dashboard() {
+  const [selectedWeek, setSelectedWeek] = useState(new Date());
+
+  const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(selectedWeek, { weekStartsOn: 1 });
+
+  // Fetch dashboard stats
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStatsType>({
+    queryKey: ['dashboard-stats', weekStart.toISOString()],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/dashboard/stats`, {
+        params: { weekStart: weekStart.toISOString() }
+      });
+      return response.data;
+    }
+  });
+
+  // Fetch vehicles
+  const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery<Vehicle[]>({
+    queryKey: ['vehicles'],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/vehicles`);
+      return response.data;
+    }
+  });
+
+  // Fetch weekly data
+  const { data: weeklyData = [], isLoading: weeklyDataLoading } = useQuery<WeeklyData[]>({
+    queryKey: ['weekly-data', weekStart.toISOString()],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/weekly-data`, {
+        params: {
+          weekStart: weekStart.toISOString(),
+          weekEnd: weekEnd.toISOString()
+        }
+      });
+      return response.data;
+    }
+  });
+
+  const handleExportExcel = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/reports/weekly-excel`, {
+        params: {
+          weekStart: weekStart.toISOString(),
+          weekEnd: weekEnd.toISOString()
+        },
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `fleet-report-${weekStart.toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Report exported successfully');
+    } catch (error) {
+      toast.error('Failed to export report');
+      console.error('Export error:', error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Fleet Dashboard</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage your Uber fleet operations and track performance
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center bg-white rounded-lg shadow px-4 py-2">
+                <Calendar className="h-5 w-5 text-gray-400 mr-2" />
+                <input
+                  type="week"
+                  value={weekStart.toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedWeek(new Date(e.target.value))}
+                  className="border-none focus:ring-0 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow"
+              >
+                <Download className="h-5 w-5 mr-2" />
+                Export Excel
+              </button>
+              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow">
+                <Plus className="h-5 w-5 mr-2" />
+                Add Vehicle
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        {stats && <DashboardStats stats={stats} isLoading={statsLoading} />}
+
+        {/* Fleet Table */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Fleet Overview</h2>
+            <div className="text-sm text-gray-500">
+              {vehicles.length} total vehicles • {vehicles.filter(v => v.status === 'active').length} active
+            </div>
+          </div>
+          <FleetTable
+            vehicles={vehicles}
+            weeklyData={weeklyData}
+            onEdit={(vehicle) => console.log('Edit:', vehicle)}
+            onDelete={(id) => console.log('Delete:', id)}
+            onView={(vehicle) => console.log('View:', vehicle)}
+          />
+        </div>
+
+        {/* Top Performers */}
+        {stats && stats.topPerformers && stats.topPerformers.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Top Performers This Week</h2>
+            <div className="space-y-3">
+              {stats.topPerformers.map((performer, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 text-blue-600 font-bold rounded-full">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{performer.vehicleNumber}</p>
+                      <p className="text-sm text-gray-500">{performer.driverName}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-green-600">
+                      R{performer.profit.toLocaleString('en-ZA')}
+                    </p>
+                    <p className="text-xs text-gray-500">Net Profit</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
