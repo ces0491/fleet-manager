@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Vehicle, WeeklyData } from '../../types';
-import { Edit, Trash2, Eye, Phone, AlertCircle } from 'lucide-react';
+import { Edit, Trash2, Eye, Phone, AlertCircle, Car } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Props {
