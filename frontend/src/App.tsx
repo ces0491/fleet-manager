@@ -24,7 +24,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 import Login from './components/Auth/Login';
+import Register from './components/Auth/Register';
+import ForgotPassword from './components/Auth/ForgotPassword';
 import Dashboard from './components/Dashboard/Dashboard';
+import UserSettings from './components/Settings/UserSettings';
 import { useEffect } from 'react';
 
 const queryClient = new QueryClient({
@@ -55,11 +58,21 @@ function App() {
         <div className="App">
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <UserSettings />
                 </ProtectedRoute>
               }
             />

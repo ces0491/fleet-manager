@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Car, LogIn } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -109,9 +109,9 @@ export default function Login() {
                   Remember me
                 </label>
               </div>
-              <button type="button" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             {/* Submit Button */}
@@ -137,8 +137,18 @@ export default function Login() {
             </button>
           </form>
 
+          {/* Registration Link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-blue-600 font-semibold hover:text-blue-700">
+                Sign up
+              </Link>
+            </p>
+          </div>
+
           {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-800 font-medium mb-2">Demo Credentials:</p>
             <div className="text-xs text-blue-700 space-y-1">
               <p>Email: admin@fleetmanager.com</p>

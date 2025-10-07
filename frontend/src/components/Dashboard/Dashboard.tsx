@@ -1,17 +1,22 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Plus, Calendar } from 'lucide-react';
+import { Download, Plus, Calendar, Settings, LogOut, User, Car } from 'lucide-react';
 import axios from 'axios';
 import { startOfWeek, endOfWeek } from 'date-fns';
 import DashboardStats from './DashboardStats';
 import FleetTable from './FleetTable';
 import { Vehicle, WeeklyData, DashboardStats as DashboardStatsType } from '../../types';
+import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function Dashboard() {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
 
   const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(selectedWeek, { weekStartsOn: 1 });
@@ -76,14 +81,78 @@ export default function Dashboard() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    toast.success('Logged out successfully');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Top Navigation Bar */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo and Title */}
+            <div className="flex items-center">
+              <div className="bg-blue-600 p-2 rounded-lg mr-3">
+                <Car className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-gray-900">Fleet Manager</h1>
+            </div>
+
+            {/* User Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+              >
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{user?.username}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                </div>
+                <div className="bg-blue-100 p-2 rounded-full">
+                  <User className="h-5 w-5 text-blue-600" />
+                </div>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                  <button
+                    onClick={() => {
+                      navigate('/settings');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                  >
+                    <Settings className="h-4 w-4 mr-3" />
+                    Account Settings
+                  </button>
+                  <div className="border-t border-gray-200 my-1"></div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Fleet Dashboard</h1>
+              <h2 className="text-3xl font-bold text-gray-900">Fleet Dashboard</h2>
               <p className="mt-1 text-sm text-gray-500">
                 Manage your Uber fleet operations and track performance
               </p>
