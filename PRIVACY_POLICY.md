@@ -72,9 +72,10 @@ We **do not sell** your personal information. We may share data only in these ci
 | Data Type | Retention Period | Justification |
 |-----------|-----------------|---------------|
 | User accounts | Active + 2 years after deletion request | Legal and audit requirements |
-| Vehicle information | Active + 7 years after vehicle removal | Tax and business record requirements |
-| Financial records | 5 years from date of entry | SARS record-keeping requirements |
+| Vehicle information | Active + 5 years after vehicle removal | Tax and business record requirements |
+| Financial records (WeeklyData) | 5 years from date of entry | SARS record-keeping requirements |
 | Audit logs | 2 years | Security and compliance monitoring |
+| Consent records | 7 years | Proof of consent under POPIA |
 | Deleted data | 30 days in archive | Recovery period for accidental deletion |
 
 After retention periods expire, data is permanently deleted from all systems.
@@ -156,7 +157,7 @@ The Service uses minimal tracking technologies:
 
 The Service may integrate with:
 
-- **MongoDB Atlas** - Database hosting (if cloud deployment used)
+- **PostgreSQL Database** - Database hosting (local or cloud providers like AWS RDS, Azure Database, etc.)
 - **Email services** - For password resets and notifications
 
 All third-party services are selected based on their POPIA compliance and data protection standards.

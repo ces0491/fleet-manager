@@ -1,7 +1,6 @@
 import ExcelJS from 'exceljs';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
-import Vehicle from '../models/Vehicle';
-import WeeklyData from '../models/WeeklyData';
+import prisma from '../config/database';
 
 interface ExportOptions {
   weekStartDate: Date;
@@ -96,16 +95,25 @@ export class ExcelService {
     ];
 
     // Fetch data
-    const vehicles = await Vehicle.find({ status: 'active' }).sort({ vehicleNumber: 1 });
-    const weeklyDataList = await WeeklyData.find({
-      weekStartDate: { $gte: weekStart },
-      weekEndDate: { $lte: weekEnd }
-    }).populate('vehicleId');
+    const vehicles = await prisma.vehicle.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { vehicleNumber: 'asc' }
+    });
+
+    const weeklyDataList = await prisma.weeklyData.findMany({
+      where: {
+        weekStartDate: { gte: weekStart },
+        weekEndDate: { lte: weekEnd }
+      },
+      include: {
+        vehicle: true
+      }
+    });
 
     // Create a map for quick lookup
     const dataMap = new Map();
     weeklyDataList.forEach(data => {
-      dataMap.set(data.vehicleId._id.toString(), data);
+      dataMap.set(data.vehicleId, data);
     });
 
     let currentRow = 4;
@@ -121,7 +129,7 @@ export class ExcelService {
 
     // Add vehicle data
     vehicles.forEach((vehicle, index) => {
-      const data = dataMap.get((vehicle._id as any).toString());
+      const data = dataMap.get(vehicle.id);
       const row = worksheet.getRow(currentRow);
 
       // Apply alternating row colors
@@ -265,16 +273,22 @@ export class ExcelService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Vehicle Report');
 
-    const vehicle = await Vehicle.findById(vehicleId);
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: vehicleId }
+    });
+
     if (!vehicle) {
       throw new Error('Vehicle not found');
     }
 
-    const weeklyData = await WeeklyData.find({
-      vehicleId,
-      weekStartDate: { $gte: startDate },
-      weekEndDate: { $lte: endDate }
-    }).sort({ weekStartDate: 1 });
+    const weeklyData = await prisma.weeklyData.findMany({
+      where: {
+        vehicleId,
+        weekStartDate: { gte: startDate },
+        weekEndDate: { lte: endDate }
+      },
+      orderBy: { weekStartDate: 'asc' }
+    });
 
     // Title
     worksheet.mergeCells('A1:F1');

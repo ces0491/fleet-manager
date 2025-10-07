@@ -1,0 +1,216 @@
+// Fleet Manager - Prisma Schema
+// This is your Prisma schema file for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      UserRole @default(VIEWER)
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  auditLogs           AuditLog[]
+  weeklyDataSubmitted WeeklyData[]          @relation("SubmittedBy")
+  dataSubjectRequests DataSubjectRequest[]  @relation("Requester")
+  handledRequests     DataSubjectRequest[]  @relation("Handler")
+  consents            UserConsent[]
+
+  @@index([email])
+  @@index([username])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+model Vehicle {
+  id            String        @id @default(uuid())
+  vehicleNumber String        @unique
+  driverName    String
+  phoneNumber   String
+  status        VehicleStatus @default(ACTIVE)
+  addedDate     DateTime      @default(now())
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  weeklyData WeeklyData[]
+
+  @@index([vehicleNumber])
+  @@index([status])
+  @@index([driverName])
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+model WeeklyData {
+  id             String   @id @default(uuid())
+  vehicleId      String
+  weekStartDate  DateTime
+  weekEndDate    DateTime
+
+  // Revenue data
+  cashCollected  Float    @default(0)
+  onlineEarnings Float    @default(0)
+  totalRevenue   Float    @default(0)
+
+  // Deductions
+  dieselExpense      Float @default(0)
+  tollsParking       Float @default(0)
+  maintenanceRepairs Float @default(0)
+  otherExpenses      Float @default(0)
+  totalDeductions    Float @default(0)
+
+  // Calculated fields
+  netProfit     Float @default(0)
+  profitMargin  Float @default(0)
+
+  // Additional metrics
+  totalTrips     Int?
+  totalDistance  Float?
+  averageRating  Float?
+
+  notes        String?
+  submittedBy  String?
+  submittedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  submitter User?   @relation("SubmittedBy", fields: [submittedBy], references: [id])
+
+  @@unique([vehicleId, weekStartDate])
+  @@index([weekStartDate, weekEndDate])
+  @@index([vehicleId, createdAt])
+}
+
+model AuditLog {
+  id           String        @id @default(uuid())
+  userId       String?
+  action       AuditAction
+  resource     AuditResource
+  resourceId   String?
+  details      String?
+  ipAddress    String?
+  userAgent    String?
+  success      Boolean       @default(true)
+  errorMessage String?
+  timestamp    DateTime      @default(now())
+  metadata     Json?
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, timestamp])
+  @@index([resource, resourceId, timestamp])
+  @@index([action, timestamp])
+  @@index([timestamp])
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXPORT
+  LOGIN
+  LOGOUT
+  ACCESS_DENIED
+}
+
+enum AuditResource {
+  VEHICLE
+  WEEKLY_DATA
+  USER
+  REPORT
+  AUTH
+  DATA_SUBJECT_REQUEST
+}
+
+model DataSubjectRequest {
+  id              String                @id @default(uuid())
+  userId          String
+  requestType     DataSubjectRequestType
+  status          RequestStatus         @default(PENDING)
+  requestDate     DateTime              @default(now())
+  completionDate  DateTime?
+  requestDetails  String?
+  responseDetails String?
+  handledBy       String?
+  rejectionReason String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Relations
+  user    User  @relation("Requester", fields: [userId], references: [id], onDelete: Cascade)
+  handler User? @relation("Handler", fields: [handledBy], references: [id], onDelete: SetNull)
+
+  @@index([userId, requestDate])
+  @@index([status, requestDate])
+}
+
+enum DataSubjectRequestType {
+  ACCESS
+  CORRECTION
+  DELETION
+  PORTABILITY
+  RESTRICTION
+  OBJECTION
+  CONSENT_WITHDRAWAL
+}
+
+enum RequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+model UserConsent {
+  id             String      @id @default(uuid())
+  userId         String
+  consentType    ConsentType
+  consentGiven   Boolean     @default(false)
+  consentDate    DateTime    @default(now())
+  consentVersion String      @default("1.0")
+  withdrawalDate DateTime?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consentType, consentGiven])
+  @@index([userId, consentDate])
+}
+
+enum ConsentType {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  DATA_PROCESSING
+  MARKETING
+}

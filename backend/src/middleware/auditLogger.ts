@@ -8,11 +8,12 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import AuditLog from '../models/AuditLog';
+import prisma from '../config/database';
+import { AuditAction, AuditResource } from '@prisma/client';
 
 interface AuditLogParams {
-  action: 'create' | 'read' | 'update' | 'delete' | 'export' | 'login' | 'logout' | 'access_denied';
-  resource: 'vehicle' | 'weeklyData' | 'user' | 'report' | 'auth' | 'data_subject_request';
+  action: AuditAction;
+  resource: AuditResource;
   resourceId?: string;
   details?: string;
   metadata?: Record<string, any>;
@@ -28,22 +29,24 @@ export const createAuditLog = async (
   errorMessage?: string
 ): Promise<void> => {
   try {
-    const userId = (req as any).user?._id;
+    const userId = (req as any).user?.id;
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.get('user-agent');
 
-    await AuditLog.create({
-      userId,
-      action: params.action,
-      resource: params.resource,
-      resourceId: params.resourceId,
-      details: params.details,
-      ipAddress,
-      userAgent,
-      success,
-      errorMessage,
-      metadata: params.metadata,
-      timestamp: new Date(),
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: params.action,
+        resource: params.resource,
+        resourceId: params.resourceId,
+        details: params.details,
+        ipAddress,
+        userAgent,
+        success,
+        errorMessage,
+        metadata: params.metadata,
+        timestamp: new Date(),
+      }
     });
   } catch (error) {
     // Don't let audit logging failures break the application
@@ -107,16 +110,18 @@ export const logAuthAttempt = async (
   const userAgent = req.get('user-agent');
 
   try {
-    await AuditLog.create({
-      action: success ? 'login' : 'access_denied',
-      resource: 'auth',
-      details: `Login attempt for ${email}`,
-      ipAddress,
-      userAgent,
-      success,
-      errorMessage,
-      timestamp: new Date(),
-      metadata: { email },
+    await prisma.auditLog.create({
+      data: {
+        action: success ? 'LOGIN' : 'ACCESS_DENIED',
+        resource: 'AUTH',
+        details: `Login attempt for ${email}`,
+        ipAddress,
+        userAgent,
+        success,
+        errorMessage,
+        timestamp: new Date(),
+        metadata: { email },
+      }
     });
   } catch (error) {
     console.error('Failed to log auth attempt:', error);
@@ -131,22 +136,24 @@ export const logDataExport = async (
   exportType: string,
   recordCount: number
 ): Promise<void> => {
-  const userId = (req as any).user?._id;
+  const userId = (req as any).user?.id;
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   try {
-    await AuditLog.create({
-      userId,
-      action: 'export',
-      resource: 'report',
-      details: `Exported ${recordCount} records as ${exportType}`,
-      ipAddress,
-      success: true,
-      timestamp: new Date(),
-      metadata: {
-        exportType,
-        recordCount,
-      },
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'EXPORT',
+        resource: 'REPORT',
+        details: `Exported ${recordCount} records as ${exportType}`,
+        ipAddress,
+        success: true,
+        timestamp: new Date(),
+        metadata: {
+          exportType,
+          recordCount,
+        },
+      }
     });
   } catch (error) {
     console.error('Failed to log data export:', error);
@@ -161,23 +168,25 @@ export const logDataSubjectRequest = async (
   requestType: string,
   targetUserId: string
 ): Promise<void> => {
-  const userId = (req as any).user?._id;
+  const userId = (req as any).user?.id;
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   try {
-    await AuditLog.create({
-      userId,
-      action: 'read',
-      resource: 'data_subject_request',
-      resourceId: targetUserId,
-      details: `Data subject request: ${requestType}`,
-      ipAddress,
-      success: true,
-      timestamp: new Date(),
-      metadata: {
-        requestType,
-        targetUserId,
-      },
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'READ',
+        resource: 'DATA_SUBJECT_REQUEST',
+        resourceId: targetUserId,
+        details: `Data subject request: ${requestType}`,
+        ipAddress,
+        success: true,
+        timestamp: new Date(),
+        metadata: {
+          requestType,
+          targetUserId,
+        },
+      }
     });
   } catch (error) {
     console.error('Failed to log data subject request:', error);

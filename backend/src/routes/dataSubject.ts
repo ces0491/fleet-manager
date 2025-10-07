@@ -15,12 +15,7 @@
 
 import express, { Request, Response } from 'express';
 import { auth } from '../middleware/auth';
-import User from '../models/User';
-import Vehicle from '../models/Vehicle';
-import WeeklyData from '../models/WeeklyData';
-import AuditLog from '../models/AuditLog';
-import UserConsent from '../models/UserConsent';
-import DataSubjectRequest from '../models/DataSubjectRequest';
+import prisma from '../config/database';
 import { logDataSubjectRequest } from '../middleware/auditLogger';
 
 const router = express.Router();
@@ -31,24 +26,41 @@ const router = express.Router();
  */
 router.get('/my-data', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
 
     // Get user data
-    const user = await User.findById(userId).select('-password');
-
-    // Get all vehicles associated with this user
-    const vehicles = await Vehicle.find({});
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
 
     // Get all weekly data submitted by this user
-    const weeklyData = await WeeklyData.find({ submittedBy: userId });
+    const weeklyData = await prisma.weeklyData.findMany({
+      where: { submittedBy: userId }
+    });
 
     // Get audit logs for this user
-    const auditLogs = await AuditLog.find({ userId }).sort({ timestamp: -1 }).limit(100);
+    const auditLogs = await prisma.auditLog.findMany({
+      where: { userId },
+      orderBy: { timestamp: 'desc' },
+      take: 100
+    });
 
     // Get consent records
-    const consents = await UserConsent.find({ userId });
+    const consents = await prisma.userConsent.findMany({
+      where: { userId }
+    });
 
-    await logDataSubjectRequest(req, 'access', userId.toString());
+    await logDataSubjectRequest(req, 'access', userId);
 
     res.json({
       message: 'Your personal data',
@@ -77,20 +89,32 @@ router.get('/my-data', auth, async (req: Request, res: Response) => {
  */
 router.get('/export', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
     const format = req.query.format || 'json';
 
     // Get all user data
-    const user = await User.findById(userId).select('-password');
-    const weeklyData = await WeeklyData.find({ submittedBy: userId });
-    const auditLogs = await AuditLog.find({ userId }).sort({ timestamp: -1 });
-    const consents = await UserConsent.find({ userId });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    const weeklyData = await prisma.weeklyData.findMany({ where: { submittedBy: userId } });
+    const auditLogs = await prisma.auditLog.findMany({ where: { userId }, orderBy: { timestamp: 'desc' } });
+    const consents = await prisma.userConsent.findMany({ where: { userId } });
 
     const exportData = {
       exportMetadata: {
         exportDate: new Date(),
         format,
-        userId: userId.toString(),
+        userId: userId,
       },
       personalInformation: user,
       weeklyDataRecords: weeklyData,
@@ -98,7 +122,7 @@ router.get('/export', auth, async (req: Request, res: Response) => {
       consentRecords: consents,
     };
 
-    await logDataSubjectRequest(req, 'portability', userId.toString());
+    await logDataSubjectRequest(req, 'portability', userId);
 
     if (format === 'json') {
       res.setHeader('Content-Type', 'application/json');
@@ -119,24 +143,26 @@ router.get('/export', auth, async (req: Request, res: Response) => {
  */
 router.post('/request-deletion', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
     const { reason } = req.body;
 
     // Create deletion request
-    const request = await DataSubjectRequest.create({
-      userId,
-      requestType: 'deletion',
-      status: 'pending',
-      requestDetails: reason,
-      requestDate: new Date(),
+    const request = await prisma.dataSubjectRequest.create({
+      data: {
+        userId,
+        requestType: 'DELETION',
+        status: 'PENDING',
+        requestDetails: reason,
+        requestDate: new Date(),
+      }
     });
 
-    await logDataSubjectRequest(req, 'deletion', userId.toString());
+    await logDataSubjectRequest(req, 'deletion', userId);
 
     res.json({
       message: 'Deletion request submitted successfully',
       request: {
-        id: request._id,
+        id: request.id,
         status: request.status,
         requestDate: request.requestDate,
       },
@@ -160,7 +186,7 @@ router.post('/request-deletion', auth, async (req: Request, res: Response) => {
  */
 router.delete('/delete-account', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
     const { confirmation } = req.body;
 
     if (confirmation !== 'DELETE MY ACCOUNT') {
@@ -170,18 +196,18 @@ router.delete('/delete-account', auth, async (req: Request, res: Response) => {
     }
 
     // Log the deletion
-    await logDataSubjectRequest(req, 'deletion', userId.toString());
+    await logDataSubjectRequest(req, 'deletion', userId);
 
     // Delete all user-associated data
-    await WeeklyData.deleteMany({ submittedBy: userId });
-    await UserConsent.deleteMany({ userId });
-    await DataSubjectRequest.deleteMany({ userId });
+    await prisma.weeklyData.deleteMany({ where: { submittedBy: userId } });
+    await prisma.userConsent.deleteMany({ where: { userId } });
+    await prisma.dataSubjectRequest.deleteMany({ where: { userId } });
 
-    // Note: AuditLog has TTL index, will auto-delete after 2 years
+    // Note: AuditLog entries remain for security (set to null via onDelete: SetNull)
     // Note: Vehicles are not deleted as they may be shared across users
 
     // Finally, delete the user account
-    await User.findByIdAndDelete(userId);
+    await prisma.user.delete({ where: { id: userId } });
 
     res.json({
       message: 'Account deleted successfully',
@@ -208,23 +234,25 @@ router.delete('/delete-account', auth, async (req: Request, res: Response) => {
  */
 router.post('/request-correction', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
     const { field, currentValue, correctedValue, reason } = req.body;
 
-    const request = await DataSubjectRequest.create({
-      userId,
-      requestType: 'correction',
-      status: 'pending',
-      requestDetails: JSON.stringify({ field, currentValue, correctedValue, reason }),
-      requestDate: new Date(),
+    const request = await prisma.dataSubjectRequest.create({
+      data: {
+        userId,
+        requestType: 'CORRECTION',
+        status: 'PENDING',
+        requestDetails: JSON.stringify({ field, currentValue, correctedValue, reason }),
+        requestDate: new Date(),
+      }
     });
 
-    await logDataSubjectRequest(req, 'correction', userId.toString());
+    await logDataSubjectRequest(req, 'correction', userId);
 
     res.json({
       message: 'Correction request submitted successfully',
       request: {
-        id: request._id,
+        id: request.id,
         status: request.status,
         field,
         requestDate: request.requestDate,
@@ -243,23 +271,25 @@ router.post('/request-correction', auth, async (req: Request, res: Response) => 
  */
 router.post('/object-processing', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
     const { processingType, reason } = req.body;
 
-    const request = await DataSubjectRequest.create({
-      userId,
-      requestType: 'objection',
-      status: 'pending',
-      requestDetails: JSON.stringify({ processingType, reason }),
-      requestDate: new Date(),
+    const request = await prisma.dataSubjectRequest.create({
+      data: {
+        userId,
+        requestType: 'OBJECTION',
+        status: 'PENDING',
+        requestDetails: JSON.stringify({ processingType, reason }),
+        requestDate: new Date(),
+      }
     });
 
-    await logDataSubjectRequest(req, 'objection', userId.toString());
+    await logDataSubjectRequest(req, 'objection', userId);
 
     res.json({
       message: 'Objection submitted successfully',
       request: {
-        id: request._id,
+        id: request.id,
         status: request.status,
         requestDate: request.requestDate,
       },
@@ -277,23 +307,25 @@ router.post('/object-processing', auth, async (req: Request, res: Response) => {
  */
 router.post('/restrict-processing', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
     const { reason } = req.body;
 
-    const request = await DataSubjectRequest.create({
-      userId,
-      requestType: 'restriction',
-      status: 'pending',
-      requestDetails: reason,
-      requestDate: new Date(),
+    const request = await prisma.dataSubjectRequest.create({
+      data: {
+        userId,
+        requestType: 'RESTRICTION',
+        status: 'PENDING',
+        requestDetails: reason,
+        requestDate: new Date(),
+      }
     });
 
-    await logDataSubjectRequest(req, 'restriction', userId.toString());
+    await logDataSubjectRequest(req, 'restriction', userId);
 
     res.json({
       message: 'Restriction request submitted successfully',
       request: {
-        id: request._id,
+        id: request.id,
         status: request.status,
         requestDate: request.requestDate,
       },
@@ -311,11 +343,20 @@ router.post('/restrict-processing', auth, async (req: Request, res: Response) =>
  */
 router.get('/my-requests', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
 
-    const requests = await DataSubjectRequest.find({ userId })
-      .sort({ requestDate: -1 })
-      .populate('handledBy', 'name email');
+    const requests = await prisma.dataSubjectRequest.findMany({
+      where: { userId },
+      orderBy: { requestDate: 'desc' },
+      include: {
+        handler: {
+          select: {
+            username: true,
+            email: true
+          }
+        }
+      }
+    });
 
     res.json({ requests });
   } catch (error: any) {
@@ -330,31 +371,35 @@ router.get('/my-requests', auth, async (req: Request, res: Response) => {
  */
 router.post('/withdraw-consent', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
     const { consentType } = req.body;
 
     // Update consent record
-    await UserConsent.updateMany(
-      { userId, consentType, consentGiven: true },
-      {
-        $set: {
-          consentGiven: false,
-          withdrawalDate: new Date()
-        }
+    await prisma.userConsent.updateMany({
+      where: {
+        userId,
+        consentType: consentType.toUpperCase(),
+        consentGiven: true
+      },
+      data: {
+        consentGiven: false,
+        withdrawalDate: new Date()
       }
-    );
-
-    // Create data subject request record
-    await DataSubjectRequest.create({
-      userId,
-      requestType: 'consent_withdrawal',
-      status: 'completed',
-      requestDetails: `Withdrew consent for: ${consentType}`,
-      requestDate: new Date(),
-      completionDate: new Date(),
     });
 
-    await logDataSubjectRequest(req, 'consent_withdrawal', userId.toString());
+    // Create data subject request record
+    await prisma.dataSubjectRequest.create({
+      data: {
+        userId,
+        requestType: 'CONSENT_WITHDRAWAL',
+        status: 'COMPLETED',
+        requestDetails: `Withdrew consent for: ${consentType}`,
+        requestDate: new Date(),
+        completionDate: new Date(),
+      }
+    });
+
+    await logDataSubjectRequest(req, 'consent_withdrawal', userId);
 
     res.json({
       message: 'Consent withdrawn successfully',
@@ -373,9 +418,12 @@ router.post('/withdraw-consent', auth, async (req: Request, res: Response) => {
  */
 router.get('/consents', auth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user._id;
+    const userId = (req as any).user.id;
 
-    const consents = await UserConsent.find({ userId }).sort({ consentDate: -1 });
+    const consents = await prisma.userConsent.findMany({
+      where: { userId },
+      orderBy: { consentDate: 'desc' }
+    });
 
     res.json({ consents });
   } catch (error: any) {

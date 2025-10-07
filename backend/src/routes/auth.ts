@@ -1,10 +1,10 @@
 import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
-import User from '../models/User';
+import prisma from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { logAuthAttempt, createAuditLog } from '../middleware/auditLogger';
-import UserConsent from '../models/UserConsent';
 
 const router = express.Router();
 
@@ -30,63 +30,77 @@ router.post(
       const { username, email, password, role } = req.body;
 
       // Check if user already exists
-      const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email },
+            { username }
+          ]
+        }
+      });
+
       if (existingUser) {
         return res.status(400).json({ message: 'User already exists with this email or username' });
       }
 
-      // Create new user
-      const user = new User({
-        username,
-        email,
-        password,
-        role: role || 'viewer'
-      });
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
 
-      await user.save();
+      // Create new user
+      const user = await prisma.user.create({
+        data: {
+          username,
+          email,
+          password: hashedPassword,
+          role: role ? role.toUpperCase() : 'VIEWER'
+        }
+      });
 
       // Create initial consent records
       const ipAddress = req.ip || req.socket.remoteAddress;
       const userAgent = req.get('user-agent');
 
-      await UserConsent.create([
-        {
-          userId: user._id,
-          consentType: 'terms_of_service',
-          consentGiven: true,
-          consentVersion: '1.0',
-          ipAddress,
-          userAgent,
-        },
-        {
-          userId: user._id,
-          consentType: 'privacy_policy',
-          consentGiven: true,
-          consentVersion: '1.0',
-          ipAddress,
-          userAgent,
-        },
-        {
-          userId: user._id,
-          consentType: 'data_processing',
-          consentGiven: true,
-          consentVersion: '1.0',
-          ipAddress,
-          userAgent,
-        },
-      ]);
+      await prisma.userConsent.createMany({
+        data: [
+          {
+            userId: user.id,
+            consentType: 'TERMS_OF_SERVICE',
+            consentGiven: true,
+            consentVersion: '1.0',
+            ipAddress,
+            userAgent,
+          },
+          {
+            userId: user.id,
+            consentType: 'PRIVACY_POLICY',
+            consentGiven: true,
+            consentVersion: '1.0',
+            ipAddress,
+            userAgent,
+          },
+          {
+            userId: user.id,
+            consentType: 'DATA_PROCESSING',
+            consentGiven: true,
+            consentVersion: '1.0',
+            ipAddress,
+            userAgent,
+          },
+        ]
+      });
 
       // Log registration
       await createAuditLog(req, {
-        action: 'create',
-        resource: 'user',
-        resourceId: (user._id as any).toString(),
+        action: 'CREATE',
+        resource: 'USER',
+        resourceId: user.id,
         details: `User registered: ${email}`,
       });
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user._id },
+        { userId: user.id },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '7d' }
       );
@@ -95,10 +109,10 @@ router.post(
         message: 'User registered successfully',
         token,
         user: {
-          _id: user._id,
+          id: user.id,
           username: user.username,
           email: user.email,
-          role: user.role
+          role: user.role.toLowerCase()
         }
       });
     } catch (error: any) {
@@ -128,7 +142,10 @@ router.post(
       const { email, password } = req.body;
 
       // Find user by email
-      const user = await User.findOne({ email });
+      const user = await prisma.user.findUnique({
+        where: { email }
+      });
+
       if (!user) {
         await logAuthAttempt(req, email, false, 'User not found');
         return res.status(401).json({ message: 'Invalid email or password' });
@@ -141,22 +158,24 @@ router.post(
       }
 
       // Verify password
-      const isPasswordValid = await user.comparePassword(password);
+      const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         await logAuthAttempt(req, email, false, 'Invalid password');
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
       // Update last login
-      user.lastLogin = new Date();
-      await user.save();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() }
+      });
 
       // Log successful login
       await logAuthAttempt(req, email, true);
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user._id },
+        { userId: user.id },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '7d' }
       );
@@ -165,11 +184,11 @@ router.post(
         message: 'Login successful',
         token,
         user: {
-          _id: user._id,
+          id: user.id,
           username: user.username,
           email: user.email,
-          role: user.role,
-          lastLogin: user.lastLogin
+          role: user.role.toLowerCase(),
+          lastLogin: new Date()
         }
       });
     } catch (error: any) {
@@ -191,10 +210,10 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
 
     res.json({
       user: {
-        _id: req.user._id,
+        id: req.user.id,
         username: req.user.username,
         email: req.user.email,
-        role: req.user.role,
+        role: req.user.role.toLowerCase(),
         isActive: req.user.isActive,
         lastLogin: req.user.lastLogin,
         createdAt: req.user.createdAt
@@ -232,14 +251,20 @@ router.put(
       }
 
       // Verify current password
-      const isPasswordValid = await user.comparePassword(currentPassword);
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ message: 'Current password is incorrect' });
       }
 
+      // Hash new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
       // Update password
-      user.password = newPassword;
-      await user.save();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword }
+      });
 
       res.json({ message: 'Password changed successfully' });
     } catch (error: any) {

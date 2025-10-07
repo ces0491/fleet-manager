@@ -62,7 +62,7 @@ Under POPIA, you (the organization deploying this software) are the **Responsibl
 ### 2. Consent Management
 
 **Implementation:**
-- [backend/src/models/UserConsent.ts](backend/src/models/UserConsent.ts) - Consent tracking database
+- UserConsent model in Prisma schema (backend/prisma/schema.prisma) - Consent tracking database
 - Consent captured during registration
 - Consent version tracking
 - Withdrawal mechanism
@@ -87,7 +87,7 @@ Body: { "consentType": "marketing" }
 ### 3. Audit Logging
 
 **Implementation:**
-- [backend/src/models/AuditLog.ts](backend/src/models/AuditLog.ts) - Audit log database
+- AuditLog model in Prisma schema (backend/prisma/schema.prisma) - Audit log database
 - [backend/src/middleware/auditLogger.ts](backend/src/middleware/auditLogger.ts) - Logging middleware
 
 **What's Logged:**
@@ -99,18 +99,25 @@ Body: { "consentType": "marketing" }
 - IP addresses and timestamps
 
 **Retention:**
-- Audit logs automatically deleted after 2 years (TTL index)
+- Audit logs automatically deleted after 2 years (handled by data retention script)
 
 **How to Query:**
 ```javascript
 // Get audit logs for a specific user
-AuditLog.find({ userId: userId }).sort({ timestamp: -1 });
+await prisma.auditLog.findMany({
+  where: { userId: userId },
+  orderBy: { timestamp: 'desc' }
+});
 
 // Get all login attempts
-AuditLog.find({ action: 'login' });
+await prisma.auditLog.findMany({
+  where: { action: 'login' }
+});
 
 // Get all data exports
-AuditLog.find({ action: 'export' });
+await prisma.auditLog.findMany({
+  where: { action: 'export' }
+});
 ```
 
 ### 4. Data Subject Rights (POPIA Sections 23-25)
@@ -144,11 +151,12 @@ AuditLog.find({ action: 'export' });
 
 | Data Type | Retention Period | Justification |
 |-----------|------------------|---------------|
-| Financial records | 5 years | SARS requirement |
+| Financial records (WeeklyData) | 5 years | SARS requirement |
 | Audit logs | 2 years | Security monitoring |
-| User accounts | Active + 2 years | Legal requirements |
+| User accounts | Active + 2 years after deletion | Legal requirements |
 | Consent records | 7 years | Proof of consent |
 | Data subject requests | 5 years | Compliance documentation |
+| Vehicle records | Active + 5 years after removal | Business records |
 
 **Automated Cleanup:**
 ```bash
@@ -292,7 +300,7 @@ You must:
 
 ```bash
 # Required environment variables:
-MONGODB_URI=mongodb://localhost:27017/fleet-manager
+DATABASE_URL=postgresql://username:password@localhost:5432/fleet_manager
 JWT_SECRET=<secure-random-string>
 ENCRYPTION_KEY=<generated-encryption-key>
 NODE_ENV=production

@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import Vehicle from '../models/Vehicle';
+import prisma from '../config/database';
 import { authenticate, authorize } from '../middleware/auth';
 
 const router = express.Router();
@@ -16,18 +16,24 @@ router.get('/', async (req, res) => {
   try {
     const { status, search } = req.query;
 
-    const query: any = {};
+    const where: any = {};
+
     if (status) {
-      query.status = status;
+      where.status = (status as string).toUpperCase();
     }
+
     if (search) {
-      query.$or = [
-        { vehicleNumber: { $regex: search, $options: 'i' } },
-        { driverName: { $regex: search, $options: 'i' } }
+      where.OR = [
+        { vehicleNumber: { contains: search as string, mode: 'insensitive' } },
+        { driverName: { contains: search as string, mode: 'insensitive' } }
       ];
     }
 
-    const vehicles = await Vehicle.find(query).sort({ vehicleNumber: 1 });
+    const vehicles = await prisma.vehicle.findMany({
+      where,
+      orderBy: { vehicleNumber: 'asc' }
+    });
+
     res.json(vehicles);
   } catch (error: any) {
     console.error('Get vehicles error:', error);
@@ -41,10 +47,14 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id);
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: req.params.id }
+    });
+
     if (!vehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
+
     res.json(vehicle);
   } catch (error: any) {
     console.error('Get vehicle error:', error);
@@ -75,20 +85,24 @@ router.post(
       const { vehicleNumber, driverName, phoneNumber, status, notes } = req.body;
 
       // Check if vehicle already exists
-      const existingVehicle = await Vehicle.findOne({ vehicleNumber: vehicleNumber.toUpperCase() });
+      const existingVehicle = await prisma.vehicle.findUnique({
+        where: { vehicleNumber: vehicleNumber.toUpperCase() }
+      });
+
       if (existingVehicle) {
         return res.status(400).json({ message: 'Vehicle with this number already exists' });
       }
 
-      const vehicle = new Vehicle({
-        vehicleNumber: vehicleNumber.toUpperCase(),
-        driverName,
-        phoneNumber,
-        status: status || 'active',
-        notes
+      const vehicle = await prisma.vehicle.create({
+        data: {
+          vehicleNumber: vehicleNumber.toUpperCase(),
+          driverName,
+          phoneNumber,
+          status: status ? (status.toUpperCase() as any) : 'ACTIVE',
+          notes
+        }
       });
 
-      await vehicle.save();
       res.status(201).json({ message: 'Vehicle created successfully', vehicle });
     } catch (error: any) {
       console.error('Create vehicle error:', error);
@@ -108,30 +122,40 @@ router.put(
     try {
       const { vehicleNumber, driverName, phoneNumber, status, notes } = req.body;
 
-      const vehicle = await Vehicle.findById(req.params.id);
+      const vehicle = await prisma.vehicle.findUnique({
+        where: { id: req.params.id }
+      });
+
       if (!vehicle) {
         return res.status(404).json({ message: 'Vehicle not found' });
       }
 
       // Check if new vehicle number conflicts with existing
       if (vehicleNumber && vehicleNumber !== vehicle.vehicleNumber) {
-        const existingVehicle = await Vehicle.findOne({
-          vehicleNumber: vehicleNumber.toUpperCase(),
-          _id: { $ne: req.params.id }
+        const existingVehicle = await prisma.vehicle.findFirst({
+          where: {
+            vehicleNumber: vehicleNumber.toUpperCase(),
+            NOT: { id: req.params.id }
+          }
         });
+
         if (existingVehicle) {
           return res.status(400).json({ message: 'Vehicle with this number already exists' });
         }
-        vehicle.vehicleNumber = vehicleNumber.toUpperCase();
       }
 
-      if (driverName) vehicle.driverName = driverName;
-      if (phoneNumber) vehicle.phoneNumber = phoneNumber;
-      if (status) vehicle.status = status;
-      if (notes !== undefined) vehicle.notes = notes;
+      const updatedVehicle = await prisma.vehicle.update({
+        where: { id: req.params.id },
+        data: {
+          ...(vehicleNumber && { vehicleNumber: vehicleNumber.toUpperCase() }),
+          ...(driverName && { driverName }),
+          ...(phoneNumber && { phoneNumber }),
+          ...(status && { status: status.toUpperCase() }),
+          ...(notes !== undefined && { notes })
+        }
+      });
 
-      await vehicle.save();
-      res.json({ message: 'Vehicle updated successfully', vehicle });
+      res.json({ message: 'Vehicle updated successfully', vehicle: updatedVehicle });
     } catch (error: any) {
       console.error('Update vehicle error:', error);
       res.status(500).json({ message: 'Failed to update vehicle', error: error.message });
@@ -145,12 +169,15 @@ router.put(
  */
 router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
-    const vehicle = await Vehicle.findByIdAndDelete(req.params.id);
-    if (!vehicle) {
-      return res.status(404).json({ message: 'Vehicle not found' });
-    }
+    const vehicle = await prisma.vehicle.delete({
+      where: { id: req.params.id }
+    });
+
     res.json({ message: 'Vehicle deleted successfully' });
   } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Vehicle not found' });
+    }
     console.error('Delete vehicle error:', error);
     res.status(500).json({ message: 'Failed to delete vehicle', error: error.message });
   }

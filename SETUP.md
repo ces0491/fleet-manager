@@ -6,12 +6,12 @@ A comprehensive fleet management system for Uber drivers with features for track
 
 ## Features Implemented
 
-### Backend (Node.js + Express + MongoDB)
+### Backend (Node.js + Express + PostgreSQL)
 
-- ✅ **MongoDB Schemas**
-  - User schema with authentication
-  - Vehicle schema with driver information
-  - WeeklyData schema with automatic calculations
+- ✅ **Prisma Schema**
+  - User model with authentication
+  - Vehicle model with driver information
+  - WeeklyData model with automatic calculations
 
 - ✅ **Authentication System**
   - JWT-based authentication
@@ -56,7 +56,7 @@ A comprehensive fleet management system for Uber drivers with features for track
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- MongoDB (v6 or higher)
+- PostgreSQL (v14 or higher)
 - npm or yarn
 
 ### 1. Clone and Install Dependencies
@@ -85,7 +85,7 @@ Edit `backend/.env`:
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=mongodb://localhost:27017/uber-fleet
+DATABASE_URL=postgresql://postgres:password@localhost:5432/fleet_manager
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 CORS_ORIGIN=http://localhost:5173
 ```
@@ -103,11 +103,22 @@ Edit `frontend/.env`:
 VITE_API_URL=http://localhost:5000/api
 ```
 
-### 3. Start MongoDB
+### 3. Setup PostgreSQL Database
 
 ```bash
-# Start MongoDB service
-mongod
+# Start PostgreSQL service (Windows)
+# PostgreSQL should be running as a service after installation
+
+# Or on Linux/Mac:
+# sudo service postgresql start
+
+# Create the database
+psql -U postgres -c "CREATE DATABASE fleet_manager;"
+
+# Run Prisma migrations
+cd backend
+npx prisma migrate dev
+npx prisma generate
 ```
 
 ### 4. Seed the Database
@@ -190,13 +201,11 @@ curl "http://localhost:5000/api/reports/weekly-excel?weekStart=2025-10-06" \
 ```
 uber-fleet-manager/
 ├── backend/
+│   ├── prisma/
+│   │   └── schema.prisma            # Prisma database schema
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── database.ts          # MongoDB connection
-│   │   ├── models/
-│   │   │   ├── User.ts              # User model
-│   │   │   ├── Vehicle.ts           # Vehicle model
-│   │   │   └── WeeklyData.ts        # Weekly data model
+│   │   │   └── database.ts          # Prisma client instance
 │   │   ├── middleware/
 │   │   │   └── auth.ts              # Auth middleware
 │   │   ├── routes/
@@ -315,27 +324,32 @@ uber-fleet-manager/
 
 ## Database Models
 
+All database models are defined in the Prisma schema file: `backend/prisma/schema.prisma`
+
 ### User
 
-- username, email, password
+- id (UUID), username, email, password
 - role: admin | manager | viewer
 - isActive, lastLogin
+- createdAt, updatedAt
 
 ### Vehicle
 
-- vehicleNumber (unique)
+- id (UUID), vehicleNumber (unique)
 - driverName, phoneNumber
 - status: active | inactive | maintenance
 - notes, addedDate
+- createdAt, updatedAt
 
 ### WeeklyData
 
-- vehicleId (ref to Vehicle)
+- id (UUID), vehicleId (ref to Vehicle)
 - weekStartDate, weekEndDate
 - Revenue: cashCollected, onlineEarnings
 - Expenses: diesel, tolls, maintenance, other
 - Calculated: totalRevenue, totalDeductions, netProfit, profitMargin
 - Metrics: totalTrips, totalDistance, averageRating
+- createdAt, updatedAt
 
 ## Excel Report Features
 
@@ -392,11 +406,21 @@ Both projects use TypeScript with strict mode enabled.
 
 ## Troubleshooting
 
-### MongoDB Connection Issues
+### PostgreSQL Connection Issues
 
-- Ensure MongoDB is running: `mongod`
-- Check connection string in `.env`
-- Verify port 27017 is not in use
+- Ensure PostgreSQL is running (check services on Windows, or `sudo service postgresql status` on Linux)
+- Check DATABASE_URL in `.env`
+- Verify port 5432 is not in use
+- Ensure the database exists: `psql -U postgres -c "\l"`
+- Check credentials are correct
+- Run `npx prisma migrate reset` to reset the database (WARNING: deletes all data)
+
+### Prisma Issues
+
+- Run `npx prisma generate` after modifying schema.prisma
+- Run `npx prisma migrate dev` to create new migrations
+- Use `npx prisma studio` to view/edit data in a GUI
+- Check Prisma logs with `DEBUG=prisma:* npm run dev`
 
 ### CORS Errors
 
@@ -447,4 +471,5 @@ For issues or questions, please check:
 1. This documentation
 2. Console logs in browser/terminal
 3. API error messages
-4. MongoDB logs
+4. PostgreSQL logs
+5. Prisma query logs (enable with DEBUG=prisma:*)

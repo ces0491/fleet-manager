@@ -1,9 +1,7 @@
 import express, { Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import WeeklyData from '../models/WeeklyData';
-import Vehicle from '../models/Vehicle';
+import prisma from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
-import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -18,20 +16,27 @@ router.get('/', async (req, res) => {
   try {
     const { vehicleId, weekStart, weekEnd } = req.query;
 
-    const query: any = {};
+    const where: any = {};
+
     if (vehicleId) {
-      query.vehicleId = vehicleId;
-    }
-    if (weekStart) {
-      query.weekStartDate = { $gte: new Date(weekStart as string) };
-    }
-    if (weekEnd) {
-      query.weekEndDate = { $lte: new Date(weekEnd as string) };
+      where.vehicleId = vehicleId as string;
     }
 
-    const data = await WeeklyData.find(query)
-      .populate('vehicleId')
-      .sort({ weekStartDate: -1 });
+    if (weekStart) {
+      where.weekStartDate = { gte: new Date(weekStart as string) };
+    }
+
+    if (weekEnd) {
+      where.weekEndDate = { lte: new Date(weekEnd as string) };
+    }
+
+    const data = await prisma.weeklyData.findMany({
+      where,
+      include: {
+        vehicle: true
+      },
+      orderBy: { weekStartDate: 'desc' }
+    });
 
     res.json(data);
   } catch (error: any) {
@@ -46,10 +51,15 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const data = await WeeklyData.findById(req.params.id).populate('vehicleId');
+    const data = await prisma.weeklyData.findUnique({
+      where: { id: req.params.id },
+      include: { vehicle: true }
+    });
+
     if (!data) {
       return res.status(404).json({ message: 'Weekly data not found' });
     }
+
     res.json(data);
   } catch (error: any) {
     console.error('Get weekly data error:', error);
@@ -99,57 +109,81 @@ router.post(
       } = req.body;
 
       // Verify vehicle exists
-      const vehicle = await Vehicle.findById(vehicleId);
+      const vehicle = await prisma.vehicle.findUnique({
+        where: { id: vehicleId }
+      });
+
       if (!vehicle) {
         return res.status(404).json({ message: 'Vehicle not found' });
       }
 
+      // Calculate fields (previously done by Mongoose pre-save hook)
+      const totalRevenue = cashCollected + onlineEarnings;
+      const totalDeductions = dieselExpense + tollsParking + maintenanceRepairs + otherExpenses;
+      const netProfit = totalRevenue - totalDeductions;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
       // Check if data already exists for this week
-      const existingData = await WeeklyData.findOne({
-        vehicleId,
-        weekStartDate: new Date(weekStartDate)
+      const existingData = await prisma.weeklyData.findFirst({
+        where: {
+          vehicleId,
+          weekStartDate: new Date(weekStartDate)
+        }
       });
 
       if (existingData) {
         // Update existing data
-        existingData.weekEndDate = new Date(weekEndDate);
-        existingData.cashCollected = cashCollected;
-        existingData.onlineEarnings = onlineEarnings;
-        existingData.dieselExpense = dieselExpense;
-        existingData.tollsParking = tollsParking;
-        existingData.maintenanceRepairs = maintenanceRepairs;
-        existingData.otherExpenses = otherExpenses;
-        if (totalTrips !== undefined) existingData.totalTrips = totalTrips;
-        if (totalDistance !== undefined) existingData.totalDistance = totalDistance;
-        if (averageRating !== undefined) existingData.averageRating = averageRating;
-        if (notes !== undefined) existingData.notes = notes;
-        existingData.submittedBy = req.user?._id as mongoose.Types.ObjectId | undefined;
-        existingData.submittedAt = new Date();
+        const updatedData = await prisma.weeklyData.update({
+          where: { id: existingData.id },
+          data: {
+            weekEndDate: new Date(weekEndDate),
+            cashCollected,
+            onlineEarnings,
+            totalRevenue,
+            dieselExpense,
+            tollsParking,
+            maintenanceRepairs,
+            otherExpenses,
+            totalDeductions,
+            netProfit,
+            profitMargin,
+            ...(totalTrips !== undefined && { totalTrips }),
+            ...(totalDistance !== undefined && { totalDistance }),
+            ...(averageRating !== undefined && { averageRating }),
+            ...(notes !== undefined && { notes }),
+            submittedBy: req.user?.id,
+            submittedAt: new Date()
+          }
+        });
 
-        await existingData.save();
-        return res.json({ message: 'Weekly data updated successfully', data: existingData });
+        return res.json({ message: 'Weekly data updated successfully', data: updatedData });
       }
 
       // Create new data
-      const weeklyData = new WeeklyData({
-        vehicleId,
-        weekStartDate: new Date(weekStartDate),
-        weekEndDate: new Date(weekEndDate),
-        cashCollected,
-        onlineEarnings,
-        dieselExpense,
-        tollsParking,
-        maintenanceRepairs,
-        otherExpenses,
-        totalTrips,
-        totalDistance,
-        averageRating,
-        notes,
-        submittedBy: req.user?._id,
-        submittedAt: new Date()
+      const weeklyData = await prisma.weeklyData.create({
+        data: {
+          vehicleId,
+          weekStartDate: new Date(weekStartDate),
+          weekEndDate: new Date(weekEndDate),
+          cashCollected,
+          onlineEarnings,
+          totalRevenue,
+          dieselExpense,
+          tollsParking,
+          maintenanceRepairs,
+          otherExpenses,
+          totalDeductions,
+          netProfit,
+          profitMargin,
+          totalTrips,
+          totalDistance,
+          averageRating,
+          notes,
+          submittedBy: req.user?.id,
+          submittedAt: new Date()
+        }
       });
 
-      await weeklyData.save();
       res.status(201).json({ message: 'Weekly data created successfully', data: weeklyData });
     } catch (error: any) {
       console.error('Create weekly data error:', error);
@@ -164,12 +198,15 @@ router.post(
  */
 router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
-    const data = await WeeklyData.findByIdAndDelete(req.params.id);
-    if (!data) {
-      return res.status(404).json({ message: 'Weekly data not found' });
-    }
+    await prisma.weeklyData.delete({
+      where: { id: req.params.id }
+    });
+
     res.json({ message: 'Weekly data deleted successfully' });
   } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Weekly data not found' });
+    }
     console.error('Delete weekly data error:', error);
     res.status(500).json({ message: 'Failed to delete weekly data', error: error.message });
   }

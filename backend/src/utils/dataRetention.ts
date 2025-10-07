@@ -8,11 +8,7 @@
  * Licensed under GNU GPL v3.0
  */
 
-import mongoose from 'mongoose';
-import WeeklyData from '../models/WeeklyData';
-import AuditLog from '../models/AuditLog';
-import DataSubjectRequest from '../models/DataSubjectRequest';
-import UserConsent from '../models/UserConsent';
+import prisma from '../config/database';
 
 /**
  * Data Retention Periods (in days)
@@ -36,14 +32,16 @@ export async function cleanupOldWeeklyData(): Promise<{
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - RETENTION_PERIODS.WEEKLY_DATA);
 
-    const result = await WeeklyData.deleteMany({
-      weekStartDate: { $lt: cutoffDate },
+    const result = await prisma.weeklyData.deleteMany({
+      where: {
+        weekStartDate: { lt: cutoffDate }
+      }
     });
 
-    console.log(`✅ Deleted ${result.deletedCount} old weekly data records (older than ${cutoffDate.toISOString()})`);
+    console.log(`✅ Deleted ${result.count} old weekly data records (older than ${cutoffDate.toISOString()})`);
 
     return {
-      deleted: result.deletedCount || 0,
+      deleted: result.count,
       errors: 0,
     };
   } catch (error) {
@@ -66,15 +64,17 @@ export async function cleanupOldDataSubjectRequests(): Promise<{
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - RETENTION_PERIODS.DATA_SUBJECT_REQUESTS);
 
-    const result = await DataSubjectRequest.deleteMany({
-      requestDate: { $lt: cutoffDate },
-      status: { $in: ['completed', 'rejected'] }, // Only delete completed/rejected requests
+    const result = await prisma.dataSubjectRequest.deleteMany({
+      where: {
+        requestDate: { lt: cutoffDate },
+        status: { in: ['COMPLETED', 'REJECTED'] } // Only delete completed/rejected requests
+      }
     });
 
-    console.log(`✅ Deleted ${result.deletedCount} old data subject requests (older than ${cutoffDate.toISOString()})`);
+    console.log(`✅ Deleted ${result.count} old data subject requests (older than ${cutoffDate.toISOString()})`);
 
     return {
-      deleted: result.deletedCount || 0,
+      deleted: result.count,
       errors: 0,
     };
   } catch (error) {
@@ -98,14 +98,16 @@ export async function cleanupOldConsentRecords(): Promise<{
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - RETENTION_PERIODS.CONSENT_RECORDS);
 
-    const result = await UserConsent.deleteMany({
-      consentDate: { $lt: cutoffDate },
+    const result = await prisma.userConsent.deleteMany({
+      where: {
+        consentDate: { lt: cutoffDate }
+      }
     });
 
-    console.log(`✅ Deleted ${result.deletedCount} old consent records (older than ${cutoffDate.toISOString()})`);
+    console.log(`✅ Deleted ${result.count} old consent records (older than ${cutoffDate.toISOString()})`);
 
     return {
-      deleted: result.deletedCount || 0,
+      deleted: result.count,
       errors: 0,
     };
   } catch (error) {
@@ -167,12 +169,12 @@ export async function getDataRetentionStats(): Promise<{
   try {
     const [weeklyDataCount, oldestWeeklyDataDoc, auditLogCount, oldestAuditLogDoc, requestCount, consentCount] =
       await Promise.all([
-        WeeklyData.countDocuments(),
-        WeeklyData.findOne().sort({ weekStartDate: 1 }).select('weekStartDate'),
-        AuditLog.countDocuments(),
-        AuditLog.findOne().sort({ timestamp: 1 }).select('timestamp'),
-        DataSubjectRequest.countDocuments(),
-        UserConsent.countDocuments(),
+        prisma.weeklyData.count(),
+        prisma.weeklyData.findFirst({ orderBy: { weekStartDate: 'asc' }, select: { weekStartDate: true } }),
+        prisma.auditLog.count(),
+        prisma.auditLog.findFirst({ orderBy: { timestamp: 'asc' }, select: { timestamp: true } }),
+        prisma.dataSubjectRequest.count(),
+        prisma.userConsent.count(),
       ]);
 
     return {
@@ -202,8 +204,10 @@ export async function checkOverdueData(): Promise<{
     // Check weekly data
     const cutoffWeeklyData = new Date();
     cutoffWeeklyData.setDate(cutoffWeeklyData.getDate() - RETENTION_PERIODS.WEEKLY_DATA);
-    const overdueWeeklyData = await WeeklyData.countDocuments({
-      weekStartDate: { $lt: cutoffWeeklyData },
+    const overdueWeeklyData = await prisma.weeklyData.count({
+      where: {
+        weekStartDate: { lt: cutoffWeeklyData }
+      }
     });
     if (overdueWeeklyData > 0) {
       overdueCategories.push(`Weekly Data (${overdueWeeklyData} records)`);
@@ -212,9 +216,11 @@ export async function checkOverdueData(): Promise<{
     // Check data subject requests
     const cutoffRequests = new Date();
     cutoffRequests.setDate(cutoffRequests.getDate() - RETENTION_PERIODS.DATA_SUBJECT_REQUESTS);
-    const overdueRequests = await DataSubjectRequest.countDocuments({
-      requestDate: { $lt: cutoffRequests },
-      status: { $in: ['completed', 'rejected'] },
+    const overdueRequests = await prisma.dataSubjectRequest.count({
+      where: {
+        requestDate: { lt: cutoffRequests },
+        status: { in: ['COMPLETED', 'REJECTED'] }
+      }
     });
     if (overdueRequests > 0) {
       overdueCategories.push(`Data Subject Requests (${overdueRequests} records)`);
@@ -223,8 +229,10 @@ export async function checkOverdueData(): Promise<{
     // Check consent records
     const cutoffConsents = new Date();
     cutoffConsents.setDate(cutoffConsents.getDate() - RETENTION_PERIODS.CONSENT_RECORDS);
-    const overdueConsents = await UserConsent.countDocuments({
-      consentDate: { $lt: cutoffConsents },
+    const overdueConsents = await prisma.userConsent.count({
+      where: {
+        consentDate: { lt: cutoffConsents }
+      }
     });
     if (overdueConsents > 0) {
       overdueCategories.push(`Consent Records (${overdueConsents} records)`);
@@ -244,7 +252,7 @@ export async function checkOverdueData(): Promise<{
 if (require.main === module) {
   (async () => {
     try {
-      await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fleet-manager');
+      await prisma.$connect();
       console.log('📦 Connected to database');
 
       const result = await runDataRetentionCleanup();
@@ -260,7 +268,7 @@ if (require.main === module) {
       console.error('❌ Fatal error:', error);
       process.exit(1);
     } finally {
-      await mongoose.connection.close();
+      await prisma.$disconnect();
     }
   })();
 }

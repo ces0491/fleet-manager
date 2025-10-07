@@ -16,14 +16,15 @@ A comprehensive web application for managing vehicle fleets with financial track
 - 🔒 **Multi-User Support** - Secure JWT authentication with role-based access (Admin, Manager, Viewer)
 - 📱 **Mobile Optimized** - Fully responsive design for on-the-go fleet management
 - 🌐 **Cloud Ready** - Easy deployment to Render, AWS, or any cloud platform
-- 💾 **Scalable Database** - MongoDB handles fleets from 1 to 1000+ vehicles
+- 💾 **Scalable Database** - PostgreSQL with Prisma handles fleets from 1 to 1000+ vehicles
 - 🛡️ **POPIA Compliant** - Built-in compliance for South Africa's data protection law (see [POPIA_COMPLIANCE_GUIDE.md](POPIA_COMPLIANCE_GUIDE.md))
 - 🆓 **Open Source** - GPL-3.0 licensed, free to use and modify
 
 ## Tech Stack
 
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS
-- **Backend**: Node.js, Express, TypeScript, MongoDB
+- **Backend**: Node.js, Express, TypeScript, PostgreSQL
+- **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: JWT with bcrypt
 - **Excel Generation**: ExcelJS
 - **Deployment**: Docker, Render
@@ -33,7 +34,7 @@ A comprehensive web application for managing vehicle fleets with financial track
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB (local or Atlas)
+- PostgreSQL 14+ (local or cloud)
 - Git
 
 ### Installation
@@ -49,9 +50,15 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 \\\
 
-3. Update the environment files with your values
+3. Update the environment files with your values (use DATABASE_URL for PostgreSQL connection)
 
-4. Start MongoDB locally or update connection string
+4. Setup PostgreSQL database:
+\\\ash
+cd backend
+psql -U postgres -c "CREATE DATABASE fleet_manager;"
+npx prisma migrate dev
+npx prisma generate
+\\\
 
 ### Development
 

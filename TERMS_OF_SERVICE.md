@@ -177,7 +177,7 @@ Continued use after changes constitutes acceptance of modified Terms.
 
 ## 14. Third-Party Services
 
-The Service may integrate with third-party services (MongoDB, email providers, etc.). Your use of third-party services is subject to their own terms and privacy policies.
+The Service may integrate with third-party services (PostgreSQL database hosting, email providers, etc.). Your use of third-party services is subject to their own terms and privacy policies.
 
 ## 15. Export Controls
 

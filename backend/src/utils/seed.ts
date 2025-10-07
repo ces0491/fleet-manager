@@ -1,134 +1,189 @@
-import mongoose from 'mongoose';
+import prisma from '../config/database';
 import dotenv from 'dotenv';
-import User from '../models/User';
-import Vehicle from '../models/Vehicle';
-import WeeklyData from '../models/WeeklyData';
+import bcrypt from 'bcryptjs';
 import { startOfWeek, endOfWeek } from 'date-fns';
 
 dotenv.config();
 
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/fleet-manager';
-
 async function seed() {
   try {
-    await mongoose.connect(mongoUri);
-    console.log('Connected to MongoDB');
+    await prisma.$connect();
+    console.log('Connected to PostgreSQL');
 
-    // Clear existing data
-    await User.deleteMany({});
-    await Vehicle.deleteMany({});
-    await WeeklyData.deleteMany({});
+    // Clear existing data (in correct order due to relations)
+    await prisma.weeklyData.deleteMany({});
+    await prisma.vehicle.deleteMany({});
+    await prisma.userConsent.deleteMany({});
+    await prisma.dataSubjectRequest.deleteMany({});
+    await prisma.auditLog.deleteMany({});
+    await prisma.user.deleteMany({});
     console.log('Cleared existing data');
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash('admin123', salt);
+
     // Create admin user
-    const admin = await User.create({
-      username: 'admin',
-      email: 'admin@fleetmanager.com',
-      password: 'admin123',
-      role: 'admin'
+    const admin = await prisma.user.create({
+      data: {
+        username: 'admin',
+        email: 'admin@fleetmanager.com',
+        password: hashedPassword,
+        role: 'ADMIN'
+      }
     });
     console.log('Created admin user');
 
     // Create sample vehicles
-    const vehicles = await Vehicle.create([
-      {
+    const vehicle1 = await prisma.vehicle.create({
+      data: {
         vehicleNumber: 'MH01AB1234',
         driverName: 'Rajesh Kumar',
         phoneNumber: '+91 98765 43210',
-        status: 'active'
-      },
-      {
+        status: 'ACTIVE'
+      }
+    });
+
+    const vehicle2 = await prisma.vehicle.create({
+      data: {
         vehicleNumber: 'MH02CD5678',
         driverName: 'Amit Sharma',
         phoneNumber: '+91 98765 43211',
-        status: 'active'
-      },
-      {
+        status: 'ACTIVE'
+      }
+    });
+
+    const vehicle3 = await prisma.vehicle.create({
+      data: {
         vehicleNumber: 'MH03EF9012',
         driverName: 'Suresh Patel',
         phoneNumber: '+91 98765 43212',
-        status: 'active'
-      },
-      {
+        status: 'ACTIVE'
+      }
+    });
+
+    const vehicle4 = await prisma.vehicle.create({
+      data: {
         vehicleNumber: 'MH04GH3456',
         driverName: 'Vijay Singh',
         phoneNumber: '+91 98765 43213',
-        status: 'active'
-      },
-      {
+        status: 'ACTIVE'
+      }
+    });
+
+    const vehicle5 = await prisma.vehicle.create({
+      data: {
         vehicleNumber: 'MH05IJ7890',
         driverName: 'Anil Yadav',
         phoneNumber: '+91 98765 43214',
-        status: 'maintenance'
+        status: 'MAINTENANCE'
       }
-    ]);
-    console.log(`Created ${vehicles.length} vehicles`);
+    });
+
+    console.log('Created 5 vehicles');
 
     // Create sample weekly data
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
 
-    const weeklyDataSamples = [
-      {
-        vehicleId: vehicles[0]._id,
+    // Helper function to calculate weekly data fields
+    const calculateFields = (cash: number, online: number, diesel: number, tolls: number, maintenance: number, other: number) => {
+      const totalRevenue = cash + online;
+      const totalDeductions = diesel + tolls + maintenance + other;
+      const netProfit = totalRevenue - totalDeductions;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+      return { totalRevenue, totalDeductions, netProfit, profitMargin };
+    };
+
+    const data1 = calculateFields(15000, 25000, 8000, 1500, 2000, 1000);
+    await prisma.weeklyData.create({
+      data: {
+        vehicleId: vehicle1.id,
         weekStartDate: weekStart,
         weekEndDate: weekEnd,
         cashCollected: 15000,
         onlineEarnings: 25000,
+        totalRevenue: data1.totalRevenue,
         dieselExpense: 8000,
         tollsParking: 1500,
         maintenanceRepairs: 2000,
         otherExpenses: 1000,
+        totalDeductions: data1.totalDeductions,
+        netProfit: data1.netProfit,
+        profitMargin: data1.profitMargin,
         totalTrips: 120,
         totalDistance: 850,
         averageRating: 4.7
-      },
-      {
-        vehicleId: vehicles[1]._id,
+      }
+    });
+
+    const data2 = calculateFields(12000, 22000, 7500, 1200, 1500, 800);
+    await prisma.weeklyData.create({
+      data: {
+        vehicleId: vehicle2.id,
         weekStartDate: weekStart,
         weekEndDate: weekEnd,
         cashCollected: 12000,
         onlineEarnings: 22000,
+        totalRevenue: data2.totalRevenue,
         dieselExpense: 7500,
         tollsParking: 1200,
         maintenanceRepairs: 1500,
         otherExpenses: 800,
+        totalDeductions: data2.totalDeductions,
+        netProfit: data2.netProfit,
+        profitMargin: data2.profitMargin,
         totalTrips: 110,
         totalDistance: 780,
         averageRating: 4.5
-      },
-      {
-        vehicleId: vehicles[2]._id,
+      }
+    });
+
+    const data3 = calculateFields(18000, 28000, 9000, 1800, 2500, 1200);
+    await prisma.weeklyData.create({
+      data: {
+        vehicleId: vehicle3.id,
         weekStartDate: weekStart,
         weekEndDate: weekEnd,
         cashCollected: 18000,
         onlineEarnings: 28000,
+        totalRevenue: data3.totalRevenue,
         dieselExpense: 9000,
         tollsParking: 1800,
         maintenanceRepairs: 2500,
         otherExpenses: 1200,
+        totalDeductions: data3.totalDeductions,
+        netProfit: data3.netProfit,
+        profitMargin: data3.profitMargin,
         totalTrips: 140,
         totalDistance: 920,
         averageRating: 4.8
-      },
-      {
-        vehicleId: vehicles[3]._id,
+      }
+    });
+
+    const data4 = calculateFields(14000, 24000, 7800, 1400, 1800, 1000);
+    await prisma.weeklyData.create({
+      data: {
+        vehicleId: vehicle4.id,
         weekStartDate: weekStart,
         weekEndDate: weekEnd,
         cashCollected: 14000,
         onlineEarnings: 24000,
+        totalRevenue: data4.totalRevenue,
         dieselExpense: 7800,
         tollsParking: 1400,
         maintenanceRepairs: 1800,
         otherExpenses: 1000,
+        totalDeductions: data4.totalDeductions,
+        netProfit: data4.netProfit,
+        profitMargin: data4.profitMargin,
         totalTrips: 115,
         totalDistance: 800,
         averageRating: 4.6
       }
-    ];
+    });
 
-    await WeeklyData.create(weeklyDataSamples);
-    console.log(`Created ${weeklyDataSamples.length} weekly data entries`);
+    console.log('Created 4 weekly data entries');
 
     console.log('\n✅ Seed completed successfully!');
     console.log('\nLogin credentials:');
@@ -138,7 +193,7 @@ async function seed() {
   } catch (error) {
     console.error('Seed error:', error);
   } finally {
-    await mongoose.connection.close();
+    await prisma.$disconnect();
     console.log('\nDatabase connection closed');
   }
 }

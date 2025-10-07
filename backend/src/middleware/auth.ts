@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser } from '../models/User';
+import prisma from '../config/database';
+import { User } from '@prisma/client';
 
 export interface AuthRequest extends Request {
-  user?: IUser;
+  user?: User;
 }
 
 export const authenticate = async (
@@ -23,7 +24,9 @@ export const authenticate = async (
       userId: string;
     };
 
-    const user = await User.findById(decoded.userId);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId }
+    });
 
     if (!user || !user.isActive) {
       res.status(401).json({ message: 'Invalid or inactive user' });

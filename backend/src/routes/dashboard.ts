@@ -1,7 +1,6 @@
 import express from 'express';
 import { startOfWeek, endOfWeek } from 'date-fns';
-import Vehicle from '../models/Vehicle';
-import WeeklyData from '../models/WeeklyData';
+import prisma from '../config/database';
 import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
@@ -21,15 +20,20 @@ router.get('/stats', async (req, res) => {
 
     // Get vehicle counts
     const [totalVehicles, activeVehicles] = await Promise.all([
-      Vehicle.countDocuments(),
-      Vehicle.countDocuments({ status: 'active' })
+      prisma.vehicle.count(),
+      prisma.vehicle.count({ where: { status: 'ACTIVE' } })
     ]);
 
     // Get weekly data
-    const weeklyData = await WeeklyData.find({
-      weekStartDate: { $gte: startDate },
-      weekEndDate: { $lte: endDate }
-    }).populate('vehicleId');
+    const weeklyData = await prisma.weeklyData.findMany({
+      where: {
+        weekStartDate: { gte: startDate },
+        weekEndDate: { lte: endDate }
+      },
+      include: {
+        vehicle: true
+      }
+    });
 
     // Calculate totals
     let weeklyRevenue = 0;
@@ -48,14 +52,11 @@ router.get('/stats', async (req, res) => {
     const topPerformers = weeklyData
       .sort((a, b) => b.netProfit - a.netProfit)
       .slice(0, 5)
-      .map(data => {
-        const vehicle = data.vehicleId as any;
-        return {
-          vehicleNumber: vehicle.vehicleNumber,
-          driverName: vehicle.driverName,
-          profit: data.netProfit
-        };
-      });
+      .map(data => ({
+        vehicleNumber: data.vehicle.vehicleNumber,
+        driverName: data.vehicle.driverName,
+        profit: data.netProfit
+      }));
 
     res.json({
       totalVehicles,
@@ -79,15 +80,19 @@ router.get('/trends', async (req, res) => {
   try {
     const { vehicleId, weeks = 4 } = req.query;
 
-    const query: any = {};
+    const where: any = {};
     if (vehicleId) {
-      query.vehicleId = vehicleId;
+      where.vehicleId = vehicleId as string;
     }
 
-    const data = await WeeklyData.find(query)
-      .populate('vehicleId')
-      .sort({ weekStartDate: -1 })
-      .limit(Number(weeks));
+    const data = await prisma.weeklyData.findMany({
+      where,
+      include: {
+        vehicle: true
+      },
+      orderBy: { weekStartDate: 'desc' },
+      take: Number(weeks)
+    });
 
     const trends = data.reverse().map(item => ({
       week: item.weekStartDate,
