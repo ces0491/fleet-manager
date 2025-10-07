@@ -26,7 +26,6 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { connectDatabase } from './config/database';
 
 // Import routes
@@ -38,9 +37,6 @@ import reportsRoutes from './routes/reports';
 import dataSubjectRoutes from './routes/dataSubject';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
