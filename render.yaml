@@ -17,6 +17,8 @@ services:
         fromDatabase:
           name: fleet-db
           property: connectionString
+      - key: CORS_ORIGIN
+        value: https://fleet-manager-xaal.onrender.com
 
 databases:
   - name: fleet-db

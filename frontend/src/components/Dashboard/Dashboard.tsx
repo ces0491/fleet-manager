@@ -10,7 +10,9 @@ import { Vehicle, WeeklyData, DashboardStats as DashboardStatsType } from '../..
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use relative path in production, absolute in development
+const API_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:5000/api');
 
 export default function Dashboard() {
   const [selectedWeek, setSelectedWeek] = useState(new Date());

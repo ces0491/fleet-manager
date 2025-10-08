@@ -3,7 +3,9 @@ import { persist } from 'zustand/middleware';
 import axios from 'axios';
 import { AuthState, User } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use relative path in production, absolute in development
+const API_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:5000/api');
 
 export const useAuthStore = create<AuthState>()(
   persist(

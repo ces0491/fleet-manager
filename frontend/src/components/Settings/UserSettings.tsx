@@ -6,7 +6,9 @@ import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use relative path in production, absolute in development
+const API_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:5000/api');
 
 interface ChangePasswordForm {
   currentPassword: string;
