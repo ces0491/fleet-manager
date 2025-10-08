@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Car, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import sheetSolvedLogo from '../../assets/sheetsolved-logo.svg';
 
 interface RegisterForm {
   username: string;
@@ -61,17 +62,20 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <div className="bg-blue-600 p-3 rounded-xl shadow-lg">
-              <Car className="h-10 w-10 text-white" />
-            </div>
+          <div className="flex items-center justify-center mb-6">
+            <img
+              src={sheetSolvedLogo}
+              alt="Sheet Solved"
+              className="h-20 w-20"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Fleet Manager</h1>
-          <p className="mt-2 text-gray-600">Create your account</p>
+          <p className="mt-2 text-sm text-gray-600">by Sheet Solved</p>
+          <p className="mt-3 text-gray-600">Create your account</p>
         </div>
 
         {/* Registration Form */}
