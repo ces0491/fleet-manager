@@ -47,56 +47,67 @@ router.post(
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      // Create new user
-      const user = await prisma.user.create({
-        data: {
-          username,
-          email,
-          password: hashedPassword,
-          role: role ? role.toUpperCase() : 'VIEWER'
-        }
+      // Get IP and user agent
+      const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.get('user-agent') || 'unknown';
+
+      // Create user and consent records in a transaction
+      const user = await prisma.$transaction(async (tx) => {
+        // Create new user
+        const newUser = await tx.user.create({
+          data: {
+            username,
+            email,
+            password: hashedPassword,
+            role: role ? role.toUpperCase() : 'VIEWER'
+          }
+        });
+
+        // Create initial consent records
+        await tx.userConsent.createMany({
+          data: [
+            {
+              userId: newUser.id,
+              consentType: 'TERMS_OF_SERVICE',
+              consentGiven: true,
+              consentVersion: '1.0',
+              ipAddress,
+              userAgent,
+            },
+            {
+              userId: newUser.id,
+              consentType: 'PRIVACY_POLICY',
+              consentGiven: true,
+              consentVersion: '1.0',
+              ipAddress,
+              userAgent,
+            },
+            {
+              userId: newUser.id,
+              consentType: 'DATA_PROCESSING',
+              consentGiven: true,
+              consentVersion: '1.0',
+              ipAddress,
+              userAgent,
+            },
+          ]
+        });
+
+        return newUser;
       });
 
-      // Create initial consent records
-      const ipAddress = req.ip || req.socket.remoteAddress;
-      const userAgent = req.get('user-agent');
-
-      await prisma.userConsent.createMany({
-        data: [
-          {
-            userId: user.id,
-            consentType: 'TERMS_OF_SERVICE',
-            consentGiven: true,
-            consentVersion: '1.0',
-            ipAddress,
-            userAgent,
-          },
-          {
-            userId: user.id,
-            consentType: 'PRIVACY_POLICY',
-            consentGiven: true,
-            consentVersion: '1.0',
-            ipAddress,
-            userAgent,
-          },
-          {
-            userId: user.id,
-            consentType: 'DATA_PROCESSING',
-            consentGiven: true,
-            consentVersion: '1.0',
-            ipAddress,
-            userAgent,
-          },
-        ]
-      });
-
-      // Log registration
-      await createAuditLog(req, {
-        action: 'CREATE',
-        resource: 'USER',
-        resourceId: user.id,
-        details: `User registered: ${email}`,
-      });
+      // Log registration (outside transaction to avoid blocking)
+      try {
+        await createAuditLog(req, {
+          action: 'CREATE',
+          resource: 'USER',
+          resourceId: user.id,
+          details: `User registered: ${email}`,
+        });
+      } catch (auditError) {
+        console.error('Audit log error (non-critical):', auditError);
+        // Don't fail registration if audit log fails
+      }
 
       // Generate JWT token
       const token = jwt.sign(
@@ -117,7 +128,11 @@ router.post(
       });
     } catch (error: any) {
       console.error('Registration error:', error);
-      res.status(500).json({ message: 'Registration failed', error: error.message });
+      console.error('Error stack:', error.stack);
+      res.status(500).json({
+        message: 'Registration failed',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'An error occurred during registration'
+      });
     }
   }
 );
