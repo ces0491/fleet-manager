@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Plus, Calendar, Settings, LogOut, User, Car } from 'lucide-react';
+import { Download, Plus, Calendar, Settings, LogOut, User } from 'lucide-react';
+import fleetManagerLogo from '../../assets/fleet-manager-logo.png';
 import axios from 'axios';
 import { startOfWeek, endOfWeek } from 'date-fns';
 import DashboardStats from './DashboardStats';
 import FleetTable from './FleetTable';
+import AddVehicleModal from './AddVehicleModal';
 import { Vehicle, WeeklyData, DashboardStats as DashboardStatsType } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -17,6 +19,7 @@ const API_URL = import.meta.env.VITE_API_URL ||
 export default function Dashboard() {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
 
@@ -97,9 +100,11 @@ export default function Dashboard() {
           <div className="flex items-center justify-between h-16">
             {/* Logo and Title */}
             <div className="flex items-center">
-              <div className="bg-blue-600 p-2 rounded-lg mr-3">
-                <Car className="h-6 w-6 text-white" />
-              </div>
+              <img
+                src={fleetManagerLogo}
+                alt="Fleet Manager"
+                className="h-10 w-auto mr-3"
+              />
               <h1 className="text-xl font-bold text-gray-900">Fleet Manager</h1>
             </div>
 
@@ -156,27 +161,33 @@ export default function Dashboard() {
             <div>
               <h2 className="text-3xl font-bold text-gray-900">Fleet Dashboard</h2>
               <p className="mt-1 text-sm text-gray-500">
-                Manage your Uber fleet operations and track performance
+                Manage your fleet operations and track performance
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="flex items-center bg-white rounded-lg shadow px-4 py-2">
+              <div className="flex items-center bg-white rounded-lg shadow px-4 py-2" title="Select week to view data">
                 <Calendar className="h-5 w-5 text-gray-400 mr-2" />
                 <input
                   type="week"
                   value={weekStart.toISOString().split('T')[0]}
                   onChange={(e) => setSelectedWeek(new Date(e.target.value))}
                   className="border-none focus:ring-0 text-sm"
+                  title="Choose a week to view performance data"
                 />
               </div>
               <button
                 onClick={handleExportExcel}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow"
+                title="Download weekly report as Excel spreadsheet"
               >
                 <Download className="h-5 w-5 mr-2" />
                 Export Excel
               </button>
-              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow">
+              <button
+                onClick={() => setShowAddVehicleModal(true)}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow"
+                title="Add a new vehicle to your fleet"
+              >
                 <Plus className="h-5 w-5 mr-2" />
                 Add Vehicle
               </button>
@@ -232,6 +243,12 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Add Vehicle Modal */}
+      <AddVehicleModal
+        isOpen={showAddVehicleModal}
+        onClose={() => setShowAddVehicleModal(false)}
+      />
     </div>
   );
 }

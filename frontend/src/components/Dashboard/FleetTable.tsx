@@ -204,10 +204,17 @@ export default function FleetTable({ vehicles, weeklyData, onEdit, onDelete, onV
       </div>
 
       {vehicles.length === 0 && (
-        <div className="text-center py-12">
-          <Car className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No vehicles</h3>
-          <p className="mt-1 text-sm text-gray-500">Get started by adding your first vehicle.</p>
+        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <Car className="mx-auto h-16 w-16 text-gray-400" />
+          <h3 className="mt-4 text-lg font-semibold text-gray-900">No vehicles yet</h3>
+          <p className="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
+            Start tracking your fleet by adding your first vehicle. Click the "Add Vehicle" button above to get started.
+          </p>
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Tip:</strong> Add vehicles to track revenue, expenses, and performance metrics for each vehicle in your fleet.
+            </p>
+          </div>
         </div>
       )}
     </div>

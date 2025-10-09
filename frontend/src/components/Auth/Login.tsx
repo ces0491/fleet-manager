@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { LogIn } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
-import sheetSolvedLogo from '../../assets/sheetsolved-logo.svg';
+import fleetManagerLogo from '../../assets/fleet-manager-logo.png';
 
 interface LoginForm {
   email: string;
@@ -42,9 +42,9 @@ export default function Login() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
             <img
-              src={sheetSolvedLogo}
-              alt="Sheet Solved"
-              className="h-20 w-20"
+              src={fleetManagerLogo}
+              alt="Fleet Manager"
+              className="h-20 w-auto"
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Fleet Manager</h1>
