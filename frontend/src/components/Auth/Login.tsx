@@ -171,13 +171,17 @@ export default function Login() {
               cesaire@sheetsolved.com
             </a>
           </p>
-          <div className="flex items-center justify-center">
+        </div>
+
+        {/* Sheet Solved Logo at Bottom */}
+        <div className="mt-6 flex items-center justify-center">
+          <a href="https://sheetsolved.com" target="_blank" rel="noopener noreferrer">
             <img
               src={sheetSolvedLogo}
-              alt="Sheet Solved"
-              className="h-6 w-auto opacity-60"
+              alt="by Sheet Solved"
+              className="h-4 w-auto opacity-50 hover:opacity-70 transition"
             />
-          </div>
+          </a>
         </div>
       </div>
     </div>

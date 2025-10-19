@@ -10,6 +10,11 @@ class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
+    // Validate required environment variables
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.warn('⚠️  Email service: SMTP credentials not configured');
+    }
+
     // Create email transporter
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -20,6 +25,27 @@ class EmailService {
         pass: process.env.SMTP_PASS,
       },
     });
+
+    // Log configuration (without sensitive data)
+    console.log('📧 Email service configured:', {
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: process.env.SMTP_PORT || '587',
+      secure: process.env.SMTP_SECURE === 'true',
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      user: process.env.SMTP_USER ? '✓ configured' : '✗ missing',
+      pass: process.env.SMTP_PASS ? '✓ configured' : '✗ missing',
+    });
+  }
+
+  async verifyConnection(): Promise<boolean> {
+    try {
+      await this.transporter.verify();
+      console.log('✅ Email service connection verified');
+      return true;
+    } catch (error) {
+      console.error('❌ Email service connection failed:', error);
+      return false;
+    }
   }
 
   async sendEmail(options: EmailOptions): Promise<void> {
@@ -31,16 +57,26 @@ class EmailService {
         html: options.html,
       };
 
-      await this.transporter.sendMail(mailOptions);
-      console.log(`Email sent successfully to ${options.to}`);
-    } catch (error) {
-      console.error('Error sending email:', error);
-      throw new Error('Failed to send email');
+      console.log(`📤 Attempting to send email to ${options.to}...`);
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`✅ Email sent successfully to ${options.to}`);
+      console.log('   Message ID:', info.messageId);
+      console.log('   Response:', info.response);
+    } catch (error: any) {
+      console.error('❌ Error sending email:', {
+        to: options.to,
+        error: error.message,
+        code: error.code,
+        command: error.command,
+      });
+      throw new Error(`Failed to send email: ${error.message}`);
     }
   }
 
   async sendPasswordResetEmail(email: string, resetToken: string): Promise<void> {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    console.log(`🔐 Sending password reset email to ${email}`);
+    console.log(`   Reset URL: ${resetUrl}`);
 
     const html = `
       <!DOCTYPE html>

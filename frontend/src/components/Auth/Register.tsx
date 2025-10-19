@@ -8,7 +8,6 @@ import fleetManagerLogo from '../../assets/fleet-manager-logo.png';
 import sheetSolvedLogo from '../../assets/sheetsolved-logo.svg';
 
 interface RegisterForm {
-  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -40,23 +39,31 @@ export default function Register() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: data.username,
           email: data.email,
           password: data.password
         })
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Registration failed');
+        const errorData = await response.json().catch(() => ({ message: 'Registration failed' }));
+        console.error('Registration error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.message || errorData.error || `Registration failed (${response.status})`);
       }
+
+      const result = await response.json();
+      console.log('Registration successful:', result);
 
       // Auto-login after registration
       await login(data.email, data.password);
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
+      console.error('Registration error:', error);
+      toast.error(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -81,26 +88,6 @@ export default function Register() {
         {/* Registration Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Username */}
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
-              </label>
-              <input
-                {...register('username', {
-                  required: 'Username is required',
-                  minLength: { value: 3, message: 'Username must be at least 3 characters' },
-                  maxLength: { value: 50, message: 'Username must be less than 50 characters' }
-                })}
-                type="text"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                placeholder="johndoe"
-              />
-              {errors.username && (
-                <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
-              )}
-            </div>
-
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -191,13 +178,17 @@ export default function Register() {
               cesaire@sheetsolved.com
             </a>
           </p>
-          <div className="flex items-center justify-center">
+        </div>
+
+        {/* Sheet Solved Logo at Bottom */}
+        <div className="mt-6 flex items-center justify-center">
+          <a href="https://sheetsolved.com" target="_blank" rel="noopener noreferrer">
             <img
               src={sheetSolvedLogo}
-              alt="Sheet Solved"
-              className="h-6 w-auto opacity-60"
+              alt="by Sheet Solved"
+              className="h-4 w-auto opacity-50 hover:opacity-70 transition"
             />
-          </div>
+          </a>
         </div>
       </div>
     </div>

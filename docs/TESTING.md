@@ -7,6 +7,7 @@ Fleet Manager includes comprehensive test suites for both backend (Jest + Supert
 ## Quick Start
 
 ### Backend Tests
+
 ```bash
 cd backend
 npm test              # Run all tests
@@ -15,6 +16,7 @@ npm run test:coverage # With coverage
 ```
 
 ### Frontend Tests
+
 ```bash
 cd frontend
 npm test              # Run all tests
@@ -31,6 +33,7 @@ npm run test:coverage # With coverage
 ## Backend Testing (Jest + Supertest)
 
 ### Test Structure
+
 ```
 backend/src/__tests__/
 ├── setup.ts                    # Global configuration
@@ -61,7 +64,8 @@ describe('API Endpoint', () => {
 ## Frontend Testing (Vitest + React Testing Library)
 
 ### Test Structure
-```
+
+```text
 frontend/src/__tests__/
 ├── setup.ts                        # Global configuration
 ├── components/
@@ -88,12 +92,14 @@ describe('MyComponent', () => {
 ## Test Utilities
 
 ### Backend Helpers
+
 - `generateTestToken(userId, role)` - Create JWT tokens
 - `mockUser`, `mockAdminUser`, `mockManagerUser` - Test users
 - `mockVehicle`, `mockWeeklyData` - Test data
 - `calculateFinancials(data)` - Business logic helper
 
 ### Frontend Helpers
+
 - `render(<Component />)` - Render with providers
 - `mockAuthUser` - Sample user data
 - `setAuthToken(token)` - Set test token
@@ -119,6 +125,7 @@ describe('MyComponent', () => {
 ## Troubleshooting
 
 **Tests timeout:**
+
 ```typescript
 it('slow test', async () => {
   // test code
@@ -126,6 +133,7 @@ it('slow test', async () => {
 ```
 
 **Mock not working:**
+
 ```typescript
 beforeEach(() => {
   jest.clearAllMocks();

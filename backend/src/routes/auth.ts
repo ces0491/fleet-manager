@@ -17,9 +17,9 @@ const router = express.Router();
 router.post(
   '/register',
   [
-    body('username').trim().isLength({ min: 3, max: 50 }).withMessage('Username must be between 3 and 50 characters'),
     body('email').isEmail().normalizeEmail().withMessage('Invalid email address'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('username').optional().trim().isLength({ min: 3, max: 50 }).withMessage('Username must be between 3 and 50 characters'),
     body('role').optional().isIn(['admin', 'manager', 'viewer']).withMessage('Invalid role')
   ],
   async (req: Request, res: Response) => {
@@ -29,20 +29,44 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { username, email, password, role } = req.body;
+      const { email, password, role } = req.body;
+      let { username } = req.body;
 
-      // Check if user already exists
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email },
-            { username }
-          ]
+      // Auto-generate username from email if not provided
+      if (!username) {
+        const emailPrefix = email.split('@')[0];
+        // Remove special characters and make lowercase
+        let baseUsername = emailPrefix.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+        // Ensure minimum length
+        if (baseUsername.length < 3) {
+          baseUsername = baseUsername + Math.floor(Math.random() * 1000);
         }
+
+        username = baseUsername;
+
+        // Check if username exists and append random number if needed
+        let usernameExists = await prisma.user.findUnique({
+          where: { username }
+        });
+
+        while (usernameExists) {
+          username = baseUsername + Math.floor(Math.random() * 10000);
+          usernameExists = await prisma.user.findUnique({
+            where: { username }
+          });
+        }
+
+        console.log(`Auto-generated username: ${username} from email: ${email}`);
+      }
+
+      // Check if email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
       });
 
       if (existingUser) {
-        return res.status(400).json({ message: 'User already exists with this email or username' });
+        return res.status(400).json({ message: 'User already exists with this email address' });
       }
 
       // Hash password
