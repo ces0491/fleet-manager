@@ -17,6 +17,7 @@ interface AuditLogParams {
   resourceId?: string;
   details?: string;
   metadata?: Record<string, any>;
+  userId?: string; // Optional: Override userId from request (for unauthenticated actions)
 }
 
 /**
@@ -29,7 +30,8 @@ export const createAuditLog = async (
   errorMessage?: string
 ): Promise<void> => {
   try {
-    const userId = (req as any).user?.id;
+    // Use provided userId or extract from request
+    const userId = params.userId || (req as any).user?.id;
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.get('user-agent');
 

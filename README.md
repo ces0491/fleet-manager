@@ -11,12 +11,11 @@ vehicle fleet operation.
 
 ## Features
 
-- 🚗 **Vehicle Tracking** - Manage fleets of any size with detailed financial data
+- 🚗 **Vehicle Tracking** - Manage fleets of any size
 - 📊 **Weekly Performance** - Monday-Sunday reporting periods
 - 💰 **Financial Metrics** - Track revenue, expenses, repairs, and net profits
-- 📈 **Analytics** - Compare performance across your entire fleet
-- 📥 **Excel Export** - Professional reports with ZAR formatting
-- 🔒 **Multi-User** - Role-based access (Admin, Manager, Viewer)
+- 📈 **Analytics** - Compare performance across your fleet
+- 📥 **Excel Export** - Excel reports with ZAR formatting
 - 📱 **Mobile Optimized** - Fully responsive design
 - 🛡️ **POPIA Compliant** - South African data protection compliance
 - 🆓 **Open Source** - GPL-3.0 licensed
@@ -72,8 +71,6 @@ All documentation is located in the [`/docs`](./docs) folder:
 ### Setup & Configuration
 
 - [Setup Guide](./docs/SETUP.md) - Detailed installation and configuration
-- [Password Reset](./docs/PASSWORD_RESET.md) - Email configuration for
-  password resets
 
 ### Development
 
