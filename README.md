@@ -1,8 +1,11 @@
 # Fleet Manager
 
-A web application for managing vehicle fleets with financial tracking and Excel export capabilities.
+A web application for managing vehicle fleets with financial tracking and
+Excel export capabilities.
 
-**Perfect for:** Ride-sharing services (Uber, Bolt, Lyft), delivery fleets, taxi companies, courier services, corporate vehicle management, and any vehicle fleet operation.
+**Perfect for:** Ride-sharing services (Uber, Bolt, Lyft), delivery fleets,
+taxi companies, courier services, corporate vehicle management, and any
+vehicle fleet operation.
 
 **Developed by:** [Sheet Solved](https://sheetsolved.com)
 
@@ -51,8 +54,8 @@ cd ..
 npm run dev
 ```
 
-- Frontend: http://localhost:5173
-- Backend: http://localhost:5000
+- Frontend: <http://localhost:5173>
+- Backend: <http://localhost:5000>
 
 ## Tech Stack
 
@@ -67,15 +70,20 @@ npm run dev
 All documentation is located in the [`/docs`](./docs) folder:
 
 ### Setup & Configuration
+
 - [Setup Guide](./docs/SETUP.md) - Detailed installation and configuration
-- [Password Reset](./docs/PASSWORD_RESET.md) - Email configuration for password resets
+- [Password Reset](./docs/PASSWORD_RESET.md) - Email configuration for
+  password resets
 
 ### Development
+
 - [Testing Guide](./docs/TESTING.md) - How to run and write tests
 - [Code Quality](./docs/CODE_QUALITY.md) - Code review and standards
 
 ### Legal & Compliance
-- [POPIA Compliance](./docs/POPIA_COMPLIANCE_GUIDE.md) - South African data protection
+
+- [POPIA Compliance](./docs/POPIA_COMPLIANCE_GUIDE.md) - South African data
+  protection
 - [Privacy Policy](./docs/PRIVACY_POLICY.md) - User privacy policy
 - [Terms of Service](./docs/TERMS_OF_SERVICE.md) - Terms and conditions
 - [Data Breach Response](./docs/DATA_BREACH_RESPONSE.md) - Incident procedures
@@ -85,23 +93,27 @@ All documentation is located in the [`/docs`](./docs) folder:
 ## Key Features
 
 ### Vehicle Management
+
 - Add, edit, delete vehicles
 - Track driver information
 - Monitor vehicle status (Active, Inactive, Maintenance)
 
 ### Financial Tracking
+
 - Weekly revenue (cash + online earnings)
 - Expense categorization (diesel, tolls, maintenance, other)
 - Automatic profit calculations
 - Profit margin analysis
 
 ### Reporting
+
 - Excel export with professional formatting
 - Vehicle-specific reports
 - Fleet-wide summaries
 - Custom date ranges
 
 ### Security & Compliance
+
 - JWT authentication
 - Password hashing (bcrypt)
 - PII encryption (AES-256-GCM)
@@ -112,32 +124,35 @@ All documentation is located in the [`/docs`](./docs) folder:
 
 ## License
 
-**GNU General Public License v3.0 (GPL-3.0)**
+GNU General Public License v3.0 (GPL-3.0)
 
 Copyright © 2025 Sheet Solved. All Rights Reserved.
 
 This is a **FREE VERSION** under GNU GPL v3.
 
-### What this means:
+### What this means
+
 - ✅ Free to use, modify, and distribute
 - ✅ Must remain open source
 - ✅ Copyright remains with Sheet Solved
 - ❌ No warranties or guarantees
 - ❌ No liability for damages
 
-For commercial licenses or support: cesaire@sheetsolved.com
+For commercial licenses or support: <cesaire@sheetsolved.com>
 
-See [LICENSE](LICENSE), [NOTICE](./docs/NOTICE.md), and [DISCLAIMER](./docs/DISCLAIMER.md) for details.
+See [LICENSE](LICENSE), [NOTICE](./docs/NOTICE.md), and
+[DISCLAIMER](./docs/DISCLAIMER.md) for details.
 
 ## Support
 
-- **Email**: cesaire@sheetsolved.com
-- **Website**: https://sheetsolved.com
+- **Email**: <cesaire@sheetsolved.com>
+- **Website**: <https://sheetsolved.com>
 - **Documentation**: [/docs](./docs)
 
 ## Contributing
 
 Contributions welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch
 3. Write tests
