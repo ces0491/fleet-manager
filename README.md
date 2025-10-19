@@ -75,7 +75,6 @@ All documentation is located in the [`/docs`](./docs) folder:
 ### Development
 
 - [Testing Guide](./docs/TESTING.md) - How to run and write tests
-- [Code Quality](./docs/CODE_QUALITY.md) - Code review and standards
 
 ### Legal & Compliance
 
@@ -154,5 +153,3 @@ Contributions welcome! Please:
 2. Create a feature branch
 3. Write tests
 4. Submit a pull request
-
-See [Code Quality Guide](./docs/CODE_QUALITY.md) for standards.

@@ -18,7 +18,7 @@ export default function FleetTable({ vehicles, weeklyData, onEdit, onDelete, onV
   // Create a map of weekly data by vehicle ID
   const weeklyDataMap = new Map<string, WeeklyData>();
   weeklyData.forEach(data => {
-    const vehicleId = typeof data.vehicleId === 'string' ? data.vehicleId : data.vehicleId._id;
+    const vehicleId = typeof data.vehicleId === 'string' ? data.vehicleId : data.vehicleId.id;
     weeklyDataMap.set(vehicleId, data);
   });
 
@@ -37,8 +37,8 @@ export default function FleetTable({ vehicles, weeklyData, onEdit, onDelete, onV
 
     // Handle weekly data sorting
     if (sortField === 'profit' || sortField === 'revenue') {
-      const aData = weeklyDataMap.get(a._id);
-      const bData = weeklyDataMap.get(b._id);
+      const aData = weeklyDataMap.get(a.id);
+      const bData = weeklyDataMap.get(b.id);
       aValue = sortField === 'profit' ? (aData?.netProfit || 0) : (aData?.totalRevenue || 0);
       bValue = sortField === 'profit' ? (bData?.netProfit || 0) : (bData?.totalRevenue || 0);
     }
@@ -115,11 +115,11 @@ export default function FleetTable({ vehicles, weeklyData, onEdit, onDelete, onV
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedVehicles.map((vehicle) => {
-              const data = weeklyDataMap.get(vehicle._id);
+              const data = weeklyDataMap.get(vehicle.id);
               const hasData = !!data;
 
               return (
-                <tr key={vehicle._id} className="hover:bg-gray-50">
+                <tr key={vehicle.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {vehicle.vehicleNumber}
                   </td>
@@ -187,7 +187,7 @@ export default function FleetTable({ vehicles, weeklyData, onEdit, onDelete, onV
                       )}
                       {onDelete && (
                         <button
-                          onClick={() => onDelete(vehicle._id)}
+                          onClick={() => onDelete(vehicle.id)}
                           className="text-red-600 hover:text-red-900"
                           title="Delete vehicle"
                         >
