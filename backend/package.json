@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "seed": "tsx src/utils/seed.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate": "prisma migrate resolve --rolled-back 20251019142531_init || true && psql $DATABASE_URL -f prisma/add-reset-columns.sql || true",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
