@@ -5,6 +5,7 @@ import { UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import fleetManagerLogo from '../../assets/fleet-manager-logo.png';
+import sheetSolvedLogo from '../../assets/sheetsolved-logo.svg';
 
 interface RegisterForm {
   username: string;
@@ -66,15 +67,14 @@ export default function Register() {
       <div className="max-w-md w-full">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-6">
+          <div className="flex items-center justify-center mb-4">
             <img
               src={fleetManagerLogo}
               alt="Fleet Manager"
-              className="h-20 w-auto"
+              className="h-16 w-auto"
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Fleet Manager</h1>
-          <p className="mt-2 text-sm text-gray-600">by Sheet Solved</p>
           <p className="mt-3 text-gray-600">Create your account to start managing your fleet</p>
         </div>
 
@@ -184,13 +184,20 @@ export default function Register() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-xs text-gray-500">
+        <div className="mt-8 text-center space-y-3">
+          <p className="text-sm text-gray-600">
             Need help? Contact{' '}
-            <a href="mailto:cesaire@sheetsolved.com" className="text-blue-600 hover:underline">
+            <a href="mailto:cesaire@sheetsolved.com" className="text-blue-600 hover:text-blue-700 font-medium">
               cesaire@sheetsolved.com
             </a>
           </p>
+          <div className="flex items-center justify-center">
+            <img
+              src={sheetSolvedLogo}
+              alt="Sheet Solved"
+              className="h-6 w-auto opacity-60"
+            />
+          </div>
         </div>
       </div>
     </div>

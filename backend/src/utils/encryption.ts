@@ -24,9 +24,17 @@ function getEncryptionKey(): Buffer {
   const keyString = process.env.ENCRYPTION_KEY;
 
   if (!keyString) {
-    console.warn('⚠️  WARNING: ENCRYPTION_KEY not set in environment. Using default (INSECURE for production!)');
-    // In production, this should throw an error or use a secure key management service
-    return crypto.scryptSync('default-insecure-key-change-in-production', 'salt', KEY_LENGTH);
+    // CRITICAL: Fail in production if encryption key is not set
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'ENCRYPTION_KEY environment variable is required in production. ' +
+        'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'base64\'))"'
+      );
+    }
+
+    // Only use default key in development
+    console.warn('⚠️  WARNING: ENCRYPTION_KEY not set. Using development-only default key (INSECURE!)');
+    return crypto.scryptSync('development-key-not-for-production-use-only', 'salt', KEY_LENGTH);
   }
 
   // Derive a proper length key from the environment variable

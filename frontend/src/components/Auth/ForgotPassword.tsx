@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Car, Mail, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+import fleetManagerLogo from '../../assets/fleet-manager-logo.png';
+import sheetSolvedLogo from '../../assets/sheetsolved-logo.svg';
 
 interface ForgotPasswordForm {
   email: string;
@@ -18,23 +20,43 @@ export default function ForgotPassword() {
   } = useForm<ForgotPasswordForm>();
 
   const onSubmit = async (data: ForgotPasswordForm) => {
-    // For now, just show a message since email service is not set up
-    setIsSubmitted(true);
-    toast.success('Password reset instructions would be sent to your email');
+    try {
+      const API_URL = import.meta.env.VITE_API_URL ||
+        (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:5000/api');
+
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to send reset email');
+      }
+
+      setIsSubmitted(true);
+      toast.success('Password reset instructions sent! Check your email.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send reset email');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="bg-blue-600 p-3 rounded-xl shadow-lg">
-              <Car className="h-10 w-10 text-white" />
-            </div>
+            <img
+              src={fleetManagerLogo}
+              alt="Fleet Manager"
+              className="h-16 w-auto"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Fleet Manager</h1>
-          <p className="mt-2 text-gray-600">Reset your password</p>
+          <p className="mt-3 text-gray-600">Reset your password</p>
         </div>
 
         {/* Forgot Password Form */}
@@ -80,20 +102,6 @@ export default function ForgotPassword() {
                   Send Reset Instructions
                 </button>
               </form>
-
-              {/* Info Box */}
-              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-xs text-yellow-800 font-medium mb-2">
-                  Email Service Not Configured
-                </p>
-                <p className="text-xs text-yellow-700">
-                  Password reset functionality requires email service setup. Please contact the administrator at{' '}
-                  <a href="mailto:cesaire@sheetsolved.com" className="font-semibold underline">
-                    cesaire@sheetsolved.com
-                  </a>{' '}
-                  for assistance with password reset.
-                </p>
-              </div>
             </>
           ) : (
             <div className="text-center">
@@ -103,19 +111,18 @@ export default function ForgotPassword() {
                 </div>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Check Your Email</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                If an account exists with that email, you will receive password reset instructions.
+              <p className="text-sm text-gray-600 mb-4">
+                If an account exists with that email, you will receive password reset instructions within a few minutes.
               </p>
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-800 font-medium mb-2">
-                  Need immediate assistance?
+                  Didn't receive the email?
                 </p>
-                <p className="text-xs text-blue-700">
-                  Contact the administrator at{' '}
-                  <a href="mailto:cesaire@sheetsolved.com" className="font-semibold underline">
-                    cesaire@sheetsolved.com
-                  </a>
-                </p>
+                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside text-left">
+                  <li>Check your spam or junk folder</li>
+                  <li>Make sure you entered the correct email</li>
+                  <li>Contact support at <a href="mailto:cesaire@sheetsolved.com" className="font-semibold underline">cesaire@sheetsolved.com</a></li>
+                </ul>
               </div>
             </div>
           )}
@@ -133,12 +140,21 @@ export default function ForgotPassword() {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Need help? Contact{' '}
-          <a href="mailto:cesaire@sheetsolved.com" className="text-blue-600 hover:text-blue-700 font-medium">
-            cesaire@sheetsolved.com
-          </a>
-        </p>
+        <div className="mt-8 text-center space-y-3">
+          <p className="text-sm text-gray-600">
+            Need help? Contact{' '}
+            <a href="mailto:cesaire@sheetsolved.com" className="text-blue-600 hover:text-blue-700 font-medium">
+              cesaire@sheetsolved.com
+            </a>
+          </p>
+          <div className="flex items-center justify-center">
+            <img
+              src={sheetSolvedLogo}
+              alt="Sheet Solved"
+              className="h-6 w-auto opacity-60"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

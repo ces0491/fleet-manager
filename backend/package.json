@@ -9,7 +9,11 @@
     "start": "node dist/server.js",
     "seed": "tsx src/utils/seed.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy"
+    "prisma:migrate": "prisma migrate deploy",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose"
   },
   "dependencies": {
     "@prisma/client": "^6.17.0",
@@ -30,13 +34,21 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.9",
     "pg": "^8.16.3",
     "prisma": "^6.17.0",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/nodemailer": "^7.0.2",
+    "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "jest": "^30.2.0",
+    "jest-mock-extended": "^4.0.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
     "tsx": "^4.7.0"
   }
 }

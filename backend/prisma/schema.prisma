@@ -11,15 +11,17 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  role      UserRole @default(VIEWER)
-  isActive  Boolean  @default(true)
-  lastLogin DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  username             String   @unique
+  email                String   @unique
+  password             String
+  role                 UserRole @default(VIEWER)
+  isActive             Boolean  @default(true)
+  lastLogin            DateTime?
+  resetToken           String?  @unique
+  resetTokenExpiry     DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   // Relations
   auditLogs           AuditLog[]
@@ -30,6 +32,7 @@ model User {
 
   @@index([email])
   @@index([username])
+  @@index([resetToken])
 }
 
 enum UserRole {

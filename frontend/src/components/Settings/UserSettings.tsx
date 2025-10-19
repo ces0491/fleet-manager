@@ -63,7 +63,9 @@ export default function UserSettings() {
   const onDeleteAccount = async (data: DeleteAccountForm) => {
     setIsDeletingAccount(true);
     try {
-      await axios.delete(`${API_URL}/data-subject/delete-account`);
+      await axios.delete(`${API_URL}/data-subject/delete-account`, {
+        data: { confirmation: data.confirmationText }
+      });
 
       toast.success('Account deleted successfully');
       logout();

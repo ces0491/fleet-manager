@@ -1,5 +1,5 @@
 export interface Vehicle {
-  _id: string;
+  id: string;
   vehicleNumber: string;
   driverName: string;
   phoneNumber: string;
@@ -11,7 +11,7 @@ export interface Vehicle {
 }
 
 export interface WeeklyData {
-  _id: string;
+  id: string;
   vehicleId: string | Vehicle;
   weekStartDate: string;
   weekEndDate: string;
@@ -36,7 +36,7 @@ export interface WeeklyData {
 }
 
 export interface User {
-  _id: string;
+  id: string;
   username: string;
   email: string;
   role: 'admin' | 'manager' | 'viewer';
